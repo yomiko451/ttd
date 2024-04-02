@@ -8,6 +8,8 @@ use ttd::{
 fn main() {
     let cli = cli::Cli::parse();
 
+    storage::init().unwrap();
+
     if cli.path {
         match storage::path_check() {
             Ok(path) => println!("{}{}", "The path of .ttd.json file is: ".green(), path.display()),
@@ -18,13 +20,13 @@ fn main() {
     match cli.command {
         Some(cli::Commands::Add { text, weekday, date, repeat }) => {
             match storage::add_task(text, weekday, date, repeat) {
-                Ok(msg) => println!("{} {}", "Task added:".green(), msg),
+                Ok(msg) => println!("{} {}", "Task added:".bright_green(), msg),
                 Err(e) => println!("Error: {}", e),
             }
         },
         Some(cli::Commands::Remove { index }) => {
             match storage::complete_task(index) {
-                Ok(msg) => println!("{} {}", "Task removed:".red() ,msg),
+                Ok(msg) => println!("{} {}", "Task removed:".bright_red() ,msg),
                 Err(e) => println!("Error: {}", e),
             }
         },

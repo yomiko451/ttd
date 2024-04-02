@@ -9,14 +9,15 @@ pub struct Task {
     pub created_at: String,
     pub weekday: String,
     pub date: String,
-    pub repeat: bool
+    pub repeat: bool,
+    pub expired: bool
 }
 
 impl Task {
     pub fn build(text: String, weekday: Option<String>, date: Option<String>, repeat: bool) -> anyhow::Result<Task> {
         let weekday = match weekday {
             Some(weekday) => {
-                date::parse_weekday(weekday)?.to_string()
+                date::parse_weekday(&weekday)?.to_string()
             },
             None => "".to_string()
         };
@@ -31,7 +32,8 @@ impl Task {
             created_at: date::get_time(),
             weekday,
             date,
-            repeat
+            repeat,
+            expired: false
         })
     }
 }
@@ -40,19 +42,24 @@ impl Display for Task {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} - {} {} - created at {}",
-            self.text.bright_green(),
+            "{} - {}{}{} - created at {}",
+            self.text.bright_yellow(),
+            self.weekday.bright_green(),
+            self.date.bright_green(),
             if self.repeat {
-                "Repeat"
+                " Repeat".bright_green()
             } else {
-                if !self.weekday.is_empty() {
-                    "Next"
+                if self.expired {
+                    " Expired".bright_red()
                 } else {
-                    "No date"
+                    if self.weekday.is_empty() && self.date.is_empty() {
+                        "No deadline".to_string().bright_green()
+                    } else {
+                        " Once".bright_green()
+                    }
                 }
             },
-            self.weekday,
-            self.created_at.bright_yellow()
+            self.created_at.bright_cyan()
         )
     }
 }

@@ -1,5 +1,6 @@
 use chrono::{Datelike, Local, Timelike, Weekday, NaiveDate};
 use anyhow::anyhow;
+use crate::task::Task;
 
 pub fn get_greeting() -> String {
     let hour = Local::now().hour();
@@ -29,10 +30,41 @@ pub fn get_weekday() -> Weekday {
     Local::now().weekday()
 }
 
-pub fn parse_weekday(weekday: String) -> anyhow::Result<chrono::Weekday> {
+pub fn parse_weekday(weekday: &str) -> anyhow::Result<chrono::Weekday> {
     weekday.parse::<chrono::Weekday>().or(
         Err(anyhow!("Invalid weekday, please enter a valid weekday (e.g. Mon, tue, etc.)"))
     )
+}
+
+pub fn date_check(task: &Task) -> bool {
+    if !task.date.is_empty() {
+        let date = parse_date(&task.date).unwrap();
+        let today_date = Local::now().date_naive();
+        if date == today_date {
+            return true;
+        }
+    }
+    if !task.weekday.is_empty() {
+        let weekday = parse_weekday(&task.weekday).unwrap();
+        let today_weekday = get_weekday();
+        if weekday == today_weekday {
+            return true;
+        }
+    }
+
+    false
+}
+
+pub fn expired_check(task: &Task) -> bool {
+    if !task.date.is_empty() {
+        let date = parse_date(&task.date).unwrap();
+        let today_date = Local::now().date_naive();
+        if date < today_date {
+            return true;
+        }
+    }
+    
+    false
 }
 
 #[cfg(test)]
@@ -49,7 +81,7 @@ mod tests {
 
     #[test]
     fn test_parse_weekday() {
-        let weekday = parse_weekday("mon的".to_string());
+        let weekday = parse_weekday("mon的");
         assert!(weekday.is_err());
     }
 
