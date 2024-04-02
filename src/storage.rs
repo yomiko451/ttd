@@ -3,34 +3,16 @@ use std::{
     io::{Seek, SeekFrom}, 
     path::PathBuf
 };
-use chrono::Local;
 use anyhow::anyhow;
-use crate::task::Task;
-
-// Mon = 0
-// Monday.
-
-// Tue = 1
-// Tuesday.
-
-// Wed = 2
-// Wednesday.
-
-// Thu = 3
-// Thursday.
-
-// Fri = 4
-// Friday.
-
-// Sat = 5
-// Saturday.
-
-// Sun = 6
-// Sunday.
+use crate::{
+    date,
+    task::Task
+};
+use colored::Colorize;
 
 fn get_path() -> anyhow::Result<PathBuf> {
     home::home_dir().map(|mut path| {
-        path.push(".rusty-journal.json");
+        path.push(".ttd.json");
         path
     }).ok_or(anyhow!("Could not find home directory"))
 }
@@ -47,7 +29,8 @@ fn collect_tasks(mut file: &File) -> anyhow::Result<Vec<Task>> {
     Ok(tasks)
 }
 
-pub fn add_task(task: Task) -> anyhow::Result<()> {
+pub fn add_task(text: String, weekday: Option<String>, repeat: bool) -> anyhow::Result<Task> {
+    let task = Task::build(text, weekday, repeat)?;
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
@@ -55,13 +38,14 @@ pub fn add_task(task: Task) -> anyhow::Result<()> {
         .create(true)
         .open(path)?;
     let mut tasks = collect_tasks(&file)?;
+    let msg = task.clone();
     tasks.push(task);
     serde_json::to_writer_pretty(file, &tasks)?;
 
-    Ok(())
+    Ok(msg)
 }
 
-pub fn complete_task(task_index: usize) -> anyhow::Result<()> {
+pub fn complete_task(task_index: usize) -> anyhow::Result<Task> {
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
@@ -73,12 +57,13 @@ pub fn complete_task(task_index: usize) -> anyhow::Result<()> {
     if task_index == 0 || task_index > tasks.len() {
         return Err(anyhow!("Invalid task index"));
     }
+    let msg = tasks.get(task_index - 1).unwrap().to_owned();
     tasks.remove(task_index - 1);
 
     file.set_len(0)?;
     serde_json::to_writer(file, &tasks)?;
 
-    Ok(())
+    Ok(msg)
 }
 
 pub fn list_tasks() -> anyhow::Result<()> {
@@ -97,6 +82,13 @@ pub fn list_tasks() -> anyhow::Result<()> {
         });
     }
 
+    Ok(())
+}
+
+pub fn tasks_of_today() -> anyhow::Result<()> {
+    println!("{} {} {} {}.", date::get_greeting().blue(), "Today is".blue(), date::get_date().blue(), date::get_weekday().to_string().blue());
+    println!("{}", "Here is today’s to-do list, have a nice day!".blue());
+    
     Ok(())
 }
 

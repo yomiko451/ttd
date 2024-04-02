@@ -5,18 +5,30 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
-
-    /// Use a different journal file.
-    #[arg(short, long)]
-    pub recycle: bool,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
     /// Write tasks to the journal file.
-    Add{ text: String },
+    #[command(visible_aliases = ["a", "ad"])]
+    Add{
+        text: String,
+        
+        /// deadline
+        #[arg(short, long)]
+        weekday: Option<String>,
+
+        /// Use 
+        #[arg(short, long)]
+        repeat: bool
+     },
     /// Remove an entry from the journal file by position.
-    Done{ index: usize },
+    #[command(visible_aliases = ["r", "rm"])]
+    Remove{ index: usize },
     /// List all tasks in the journal file.
-    List
+    #[command(visible_aliases = ["l", "ls"])]
+    List,
+    /// List tasks for today.
+    #[command(visible_aliases = ["t", "td"])]
+    Today
 }

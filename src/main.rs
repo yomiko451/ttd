@@ -1,42 +1,32 @@
 use clap::Parser;
+use colored::Colorize;
 use ttd::{
     cli,
-    task::Task,
-    storage::{
-        add_task,
-        complete_task,
-        list_tasks
-    }
+    storage
 };
 
 fn main() {
     let cli = cli::Cli::parse();
-
-    match &cli.command {
-        cli::Commands::Add { text } => {
-            if cli.recycle {
-                println!("Adding task: {}", text);
-            } else {
-                match add_task(Task::new(text.to_owned())) {
-                    Ok(_) => println!("Added task: {}", text),
-                    Err(e) => println!("Error: {}", e),
-                }
-            }
-            if let Err(e) = list_tasks() {
-                println!("Error: {}", e);
-            }
-        },
-        cli::Commands::Done { index } => {
-            match complete_task(index.to_owned()) {
-                Ok(_) => println!("Completed task: {}", index),
+    match cli.command {
+        cli::Commands::Add { text, weekday, repeat } => {
+            match storage::add_task(text, weekday, repeat) {
+                Ok(msg) => println!("{} {}", "Task added:".green(), msg),
                 Err(e) => println!("Error: {}", e),
             }
-            if let Err(e) = list_tasks() {
-                println!("Error: {}", e);
+        },
+        cli::Commands::Remove { index } => {
+            match storage::complete_task(index) {
+                Ok(msg) => println!("{} {}", "Task removed:".red() ,msg),
+                Err(e) => println!("Error: {}", e),
             }
         },
         cli::Commands::List => {
-            if let Err(e) = list_tasks() {
+            if let Err(e) = storage::list_tasks() {
+                println!("Error: {}", e);
+            }
+        },
+        cli::Commands::Today => {
+            if let Err(e) = storage::tasks_of_today() {
                 println!("Error: {}", e);
             }
         }
