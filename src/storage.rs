@@ -17,6 +17,15 @@ fn get_path() -> anyhow::Result<PathBuf> {
     }).ok_or(anyhow!("Could not find home directory"))
 }
 
+pub fn path_check() -> anyhow::Result<PathBuf> {
+    let path = get_path()?;
+    if path.exists() {
+        Ok(path)
+    } else {
+        Err(anyhow!("No .ttd.json file found, please add a task first".red()))
+    }
+}
+
 fn collect_tasks(mut file: &File) -> anyhow::Result<Vec<Task>> {
     file.seek(SeekFrom::Start(0))?;
     let tasks: Vec<Task> = match serde_json::from_reader(file) {
@@ -29,8 +38,8 @@ fn collect_tasks(mut file: &File) -> anyhow::Result<Vec<Task>> {
     Ok(tasks)
 }
 
-pub fn add_task(text: String, weekday: Option<String>, repeat: bool) -> anyhow::Result<Task> {
-    let task = Task::build(text, weekday, repeat)?;
+pub fn add_task(text: String, weekday: Option<String>, date: Option<String>, repeat: bool) -> anyhow::Result<Task> {
+    let task = Task::build(text, weekday, date, repeat)?;
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)

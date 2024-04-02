@@ -4,7 +4,10 @@ use clap::{Parser, Subcommand};
 #[command(version, about, long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
+
+    #[arg(short, long)]
+    pub path: bool,
 }
 
 #[derive(Subcommand)]
@@ -15,11 +18,14 @@ pub enum Commands {
         text: String,
         
         /// deadline
-        #[arg(short, long)]
+        #[arg(short, long, conflicts_with = "date", group = "week")]
         weekday: Option<String>,
 
+        #[arg(short, long, conflicts_with = "repeat")]
+        date: Option<String>,
+
         /// Use 
-        #[arg(short, long)]
+        #[arg(short, long, requires = "week")]
         repeat: bool
      },
     /// Remove an entry from the journal file by position.

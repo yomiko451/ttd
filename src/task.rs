@@ -1,4 +1,4 @@
-use crate::date::{self, parse_weekday};
+use crate::date;
 use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use colored::Colorize;
@@ -8,14 +8,21 @@ pub struct Task {
     pub text: String,
     pub created_at: String,
     pub weekday: String,
+    pub date: String,
     pub repeat: bool
 }
 
 impl Task {
-    pub fn build(text: String, weekday: Option<String>, repeat: bool) -> anyhow::Result<Task> {
+    pub fn build(text: String, weekday: Option<String>, date: Option<String>, repeat: bool) -> anyhow::Result<Task> {
         let weekday = match weekday {
             Some(weekday) => {
-                parse_weekday(weekday)?.to_string()
+                date::parse_weekday(weekday)?.to_string()
+            },
+            None => "".to_string()
+        };
+        let date = match date {
+            Some(date) => {
+                date::parse_date(&date)?.format("%Y%m%d").to_string()
             },
             None => "".to_string()
         };
@@ -23,6 +30,7 @@ impl Task {
             text,
             created_at: date::get_time(),
             weekday,
+            date,
             repeat
         })
     }
