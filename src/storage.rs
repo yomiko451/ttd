@@ -14,7 +14,7 @@ fn get_path() -> anyhow::Result<PathBuf> {
     home::home_dir().map(|mut path| {
         path.push(".ttd.json");
         path
-    }).ok_or(anyhow!("Could not find home directory"))
+    }).ok_or(anyhow!("Could not find home directory.".bright_red()))
 }
 
 pub fn init() -> anyhow::Result<()> {
@@ -43,7 +43,7 @@ pub fn path_check() -> anyhow::Result<PathBuf> {
     if path.exists() {
         Ok(path)
     } else {
-        Err(anyhow!("No .ttd.json file found, please add a task first".red()))
+        Err(anyhow!("The specified file cannot be found. Please restart the program.".bright_red()))
     }
 }
 
@@ -70,9 +70,13 @@ pub fn get_tasks_and_file() -> anyhow::Result<(File, Vec<Task>)> {
     Ok((file, tasks))
 }
 
-pub fn add_task(text: String, weekday: Option<String>, date: Option<String>, repeat: bool) -> anyhow::Result<Task> {
-    let task = Task::build(text, weekday, date, repeat)?;
+pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> anyhow::Result<Task> {
+    let mut task = Task::build(text, weekday, date)?;
     let (file, mut tasks) = get_tasks_and_file()?;
+    if date::expired_check(&task) {
+        task.expired = true;
+        println!("{}", "Warning, this task is expired!".bright_red())
+    }
     let msg = task.clone();
     tasks.push(task);
     serde_json::to_writer_pretty(file, &tasks)?;
@@ -83,7 +87,7 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>, rep
 pub fn complete_task(task_index: usize) -> anyhow::Result<Task> {
     let (file, mut tasks) = get_tasks_and_file()?;
     if task_index == 0 || task_index > tasks.len() {
-        return Err(anyhow!("Invalid task index"));
+        return Err(anyhow!("{}{}", "Invalid task index! the task index should be between 1 and ".bright_red(), tasks.len().to_string().bright_red()));
     }
     let msg = tasks.get(task_index - 1).unwrap().to_owned();
     tasks.remove(task_index - 1);
@@ -106,7 +110,7 @@ fn get_tasks() -> anyhow::Result<Vec<Task>> {
 pub fn list_tasks() -> anyhow::Result<()> {
     let tasks = get_tasks()?;
     if tasks.is_empty() {
-        println!("Task list is empty!");
+        println!("{}", "Task list is empty!".bright_red());
     } else {
         tasks.into_iter().enumerate().for_each(|(index, task)| {
             println!("{}: {}", index + 1, task)
@@ -119,9 +123,8 @@ pub fn list_tasks() -> anyhow::Result<()> {
 pub fn tasks_of_today() -> anyhow::Result<()> {
     println!("{} {} {} {}.", date::get_greeting().bright_green(), "Today is".bright_green(), date::get_date().bright_green(), date::get_weekday().to_string().bright_green());
     let tasks = get_tasks()?;
-
     if tasks.is_empty() {
-        println!("Task list is empty!");
+        println!("{}", "Task list is empty!".bright_red());
     } else {
         let tasks = tasks.into_iter().filter(|t| date::date_check(t)).collect::<Vec<Task>>();
         if !tasks.is_empty() {
@@ -132,7 +135,7 @@ pub fn tasks_of_today() -> anyhow::Result<()> {
                 index += 1;
             }
         } else {
-            println!("{}", "Take a break! there is no task for today!".bright_green());
+            println!("{}", "Take a break! there is no task today!".bright_green());
         };
     }
     

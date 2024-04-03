@@ -21,12 +21,8 @@ pub enum Commands {
         #[arg(short, long, conflicts_with = "date", group = "week")]
         weekday: Option<String>,
 
-        #[arg(short, long, conflicts_with = "repeat")]
+        #[arg(short, long)]
         date: Option<String>,
-
-        /// Use 
-        #[arg(short, long, requires = "week")]
-        repeat: bool
      },
     /// Remove an entry from the journal file by position.
     #[command(visible_aliases = ["r", "rm"])]

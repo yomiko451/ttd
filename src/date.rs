@@ -1,5 +1,6 @@
 use chrono::{Datelike, Local, Timelike, Weekday, NaiveDate};
 use anyhow::anyhow;
+use colored::Colorize;
 use crate::task::Task;
 
 pub fn get_greeting() -> String {
@@ -22,7 +23,7 @@ pub fn get_date() -> String {
 
 pub fn parse_date(date: &str) -> anyhow::Result<NaiveDate> {
     NaiveDate::parse_from_str(date, "%Y%m%d").or(
-        Err(anyhow!("Invalid date, please enter a valid date (e.g. 20240402)"))
+        Err(anyhow!("{}", "Invalid date, please enter a valid date (e.g. 20240402)".bright_red()))
     )
 }
 
@@ -32,7 +33,7 @@ pub fn get_weekday() -> Weekday {
 
 pub fn parse_weekday(weekday: &str) -> anyhow::Result<chrono::Weekday> {
     weekday.parse::<chrono::Weekday>().or(
-        Err(anyhow!("Invalid weekday, please enter a valid weekday (e.g. Mon, tue, etc.)"))
+        Err(anyhow!("{}", "Invalid weekday, please enter a valid weekday (e.g. Mon, FRI, tue, etc.)".bright_red()))
     )
 }
 
