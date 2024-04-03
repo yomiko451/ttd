@@ -6,6 +6,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 
+    /// Show the path of the journal file.
     #[arg(short, long)]
     pub path: bool,
 }
@@ -15,22 +16,27 @@ pub enum Commands {
     /// Write tasks to the journal file.
     #[command(visible_aliases = ["a", "ad"])]
     Add{
+        /// set content for the task
         text: String,
         
-        /// deadline
+        /// set repeat weekday for the task
         #[arg(short, long, conflicts_with = "date", group = "week")]
         weekday: Option<String>,
 
+        /// set one-time-date for the task
         #[arg(short, long)]
         date: Option<String>,
      },
-    /// Remove an entry from the journal file by position.
+
+    /// Remove a task from the journal file by position.
     #[command(visible_aliases = ["r", "rm"])]
     Remove{ index: usize },
+
     /// List all tasks in the journal file.
     #[command(visible_aliases = ["l", "ls"])]
     List,
-    /// List tasks for today.
+
+    /// List tasks which are due today.
     #[command(visible_aliases = ["t", "td"])]
     Today
 }

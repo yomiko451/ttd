@@ -12,7 +12,7 @@ fn main() {
 
     if cli.path {
         match storage::path_check() {
-            Ok(path) => println!("{}{}", "The path of .ttd.json file is: ".bright_green(), path.display().to_string().bright_green()),
+            Ok(path) => println!("{}{}", "The path of journal file is: ".bright_green(), path.display().to_string().bright_green()),
             Err(e) => println!("{}", e),
         }
     }
