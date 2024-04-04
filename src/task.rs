@@ -51,7 +51,7 @@ impl Display for Task {
             } else if !self.weekday.is_empty() {
                 " Repeat".bright_green()
             } else {
-                "No deadline".to_string().bright_green()
+                "Flexible".to_string().bright_green()
             },
             self.created_at
         )

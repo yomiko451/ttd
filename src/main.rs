@@ -49,9 +49,10 @@ fn main() {
                 }  
             }
         },
-        Some(cli::Commands::List) => {
-            if let Err(e) = storage::list_tasks() {
-                println!("{}", e);
+        Some(cli::Commands::List{ flexible }) => {
+            match storage::list_tasks(flexible) {
+                Ok(_) => {},
+                Err(e) => println!("{}", e),
             }
         },
         Some(cli::Commands::Today) => {

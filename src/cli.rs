@@ -13,7 +13,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Add one or multiple tasks to the journal file.
+    /// Add one or multiple tasks to the journal file, If no arguments provided, the task will be configured as a long-term task.
     #[command(visible_aliases = ["a", "ad"])]
     Add{
         /// set content for the task
@@ -50,7 +50,10 @@ pub enum Commands {
 
     /// List all tasks in the journal file.
     #[command(visible_aliases = ["l", "ls"])]
-    List,
+    List{
+        #[arg(short, long)]
+        flexible: bool
+    },
 
     /// List tasks to be done today.
     #[command(visible_aliases = ["t", "td"])]

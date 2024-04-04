@@ -194,14 +194,25 @@ fn get_tasks() -> anyhow::Result<Vec<Task>> {
     Ok(tasks)
 }
 
-pub fn list_tasks() -> anyhow::Result<()> {
-    let tasks = get_tasks()?;
+pub fn list_tasks(flexible: bool) -> anyhow::Result<()> {
+    let mut tasks = get_tasks()?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
     } else {
-        tasks.into_iter().enumerate().for_each(|(index, task)| {
-            println!("{}: {}", index + 1, task)
-        });
+        if flexible {
+            tasks.retain(|t| t.date.is_empty() && t.weekday.is_empty());
+            if tasks.is_empty() {
+                println!("{}", "warning: There are no flexible tasks!".bright_yellow());
+            } else {
+                tasks.into_iter().enumerate().for_each(|(index, task)| {
+                    println!("{}: {}", index + 1, task)
+               });
+            }
+        } else {
+            tasks.into_iter().enumerate().for_each(|(index, task)| {
+                println!("{}: {}", index + 1, task)
+            });
+        }
     }
 
     Ok(())
@@ -209,18 +220,16 @@ pub fn list_tasks() -> anyhow::Result<()> {
 
 pub fn tasks_of_today() -> anyhow::Result<()> {
     println!("{} {} {} {}.", date::get_greeting().bright_green(), "Today is".bright_green(), date::get_date().bright_green(), date::get_weekday().to_string().bright_green());
-    let tasks = get_tasks()?;
+    let mut tasks = get_tasks()?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
     } else {
-        let tasks = tasks.into_iter().filter(|t| date::date_check(t)).collect::<Vec<Task>>();
+        tasks.retain(|t| date::date_check(t));
         if !tasks.is_empty() {
             println!("{}", "Here is today’s todo list, have a nice day!".bright_green());
-            let mut index = 1;
-            for task in tasks {
-                println!("{}: {}", index, task);
-                index += 1;
-            }
+            tasks.into_iter().enumerate().for_each(|(index, task)| {
+                println!("{}: {}", index + 1, task)
+            });
         } else {
             println!("{}", "Take a break! there is no task today!".bright_green());
         };
