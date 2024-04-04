@@ -8,8 +8,7 @@ pub fn get_greeting() -> String {
     match hour {
         0..=11 => "Good morning!".to_string(),
         12..=16 => "Good afternoon!".to_string(),
-        17..=23 => "Good evening!".to_string(),
-        _ => "Hello".to_string(),
+        _ => "Good evening!".to_string()
     }
 }
 
