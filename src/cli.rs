@@ -17,7 +17,8 @@ pub enum Commands {
     #[command(visible_aliases = ["a", "ad"])]
     Add{
         /// set content for the task
-        text: Option<String>, // TODO 当没有其他参数时，这个参数必须有
+        #[arg(required_unless_present = "multiple")]
+        text: Option<String>,
         
         /// set repeat weekday for the task
         #[arg(short, long, conflicts_with = "date")]
@@ -32,15 +33,14 @@ pub enum Commands {
         multiple: bool
     }, 
 
-    /// Remove one or multiple tasks from the journal file.
+    /// Remove one or multiple tasks from the journal file, If no arguments provided, the last task will be removed.
     #[command(visible_aliases = ["r", "rm"])]
     Remove{
         /// remove a task by index
-        #[arg(required_unless_present_any = ["expired", "all"])]
         index: Option<usize>,
 
         /// remove expired tasks
-        #[arg(short, long, conflicts_with = "index")]
+        #[arg(short, long, exclusive = true)]
         expired: bool,
 
         /// remove all tasks

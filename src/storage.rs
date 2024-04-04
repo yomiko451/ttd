@@ -102,11 +102,10 @@ pub fn handle_user_input() -> anyhow::Result<()> {
                 if input.len() == 2 {
                     let text = input[0];
                     let weekday_or_date = input[1];
-                    add_tasks(text, weekday_or_date)?;
+                    parse_input(text, weekday_or_date)?;
                 } else {
                     println!("{}", "error: Invalid input!".bright_red());
-                }
-                
+                }     
             },
             Err(error) => {
                 println!("Error reading input: {}", error);
@@ -118,7 +117,7 @@ pub fn handle_user_input() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn add_tasks(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
+fn parse_input(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
     match parse_date(weekday_or_date) {
         Ok(date) => {
             add_task(text.to_string(), Option::None, Some(date.format("%Y%m%d").to_string()))?;
@@ -133,19 +132,30 @@ pub fn add_tasks(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
             }
         }
     }
-    
 
     Ok(())
 }
 
 pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<Task> {
-    let task_index = task_index.ok_or(anyhow!("{}", "error: Invalid task index!".bright_red()))?;
     let (file, mut tasks) = get_tasks_and_file()?;
-    if task_index == 0 || task_index > tasks.len() {
-        return Err(anyhow!("{}{}", "error: Invalid task index! the task index should be between 1 and ".bright_red(), tasks.len().to_string().bright_red()));
-    }
-    let msg = tasks.get(task_index - 1).unwrap().to_owned();
-    tasks.remove(task_index - 1);
+    let index = match task_index {
+        Some(index) => {
+            if index == 0 || index > tasks.len() {
+                return Err(anyhow!("{}{}", "error: Invalid task index! the task index should be between 1 and ".bright_red(), tasks.len().to_string().bright_red()));
+            } else {
+                index - 1
+            }
+        },
+        None => {
+            if tasks.is_empty() {
+                return Err(anyhow!("{}", "error: There are no tasks to remove!".bright_red()));
+            } else {
+                tasks.len() - 1
+            }
+        }
+    };
+    let msg = tasks.get(index).unwrap().to_owned();
+    tasks.remove(index);
     file.set_len(0)?;
     serde_json::to_writer_pretty(file, &tasks)?;
     println!("{} {}", "Task removed:".bright_yellow() ,msg);
