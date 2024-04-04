@@ -41,11 +41,11 @@ impl Display for Task {
         write!(
             f,
             "{} - {}{}{} - created at {}",
-            self.text.bright_yellow(),
+            self.text.bright_cyan(),
             self.weekday.bright_green(),
             self.date.bright_green(),
             if self.expired {
-                " Expired".bright_red()
+                " Expired".bright_yellow()
             } else if !self.date.is_empty() {
                 " Ok".bright_green()
             } else if !self.weekday.is_empty() {
@@ -53,7 +53,7 @@ impl Display for Task {
             } else {
                 "No deadline".to_string().bright_green()
             },
-            self.created_at.bright_cyan()
+            self.created_at
         )
     }
 }

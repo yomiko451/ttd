@@ -75,7 +75,7 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> 
     let (file, mut tasks) = get_tasks_and_file()?;
     if date::expired_check(&task) {
         task.expired = true;
-        println!("{}", "Warning, this task is expired!".bright_red())
+        println!("{}", "warning: this task is expired!".bright_yellow())
     }
     let msg = task.clone();
     tasks.push(task);
@@ -84,10 +84,11 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> 
     Ok(msg)
 }
 
-pub fn complete_task(task_index: usize) -> anyhow::Result<Task> {
+pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<Task> {
+    let task_index = task_index.ok_or(anyhow!("{}", "error: Invalid task index!".bright_red()))?;
     let (file, mut tasks) = get_tasks_and_file()?;
     if task_index == 0 || task_index > tasks.len() {
-        return Err(anyhow!("{}{}", "Invalid task index! the task index should be between 1 and ".bright_red(), tasks.len().to_string().bright_red()));
+        return Err(anyhow!("{}{}", "error: Invalid task index! the task index should be between 1 and ".bright_red(), tasks.len().to_string().bright_red()));
     }
     let msg = tasks.get(task_index - 1).unwrap().to_owned();
     tasks.remove(task_index - 1);
@@ -95,6 +96,23 @@ pub fn complete_task(task_index: usize) -> anyhow::Result<Task> {
     serde_json::to_writer_pretty(file, &tasks)?;
 
     Ok(msg)
+}
+
+pub fn clear_tasks() -> anyhow::Result<usize> {
+    let (file, tasks) = get_tasks_and_file()?;
+    file.set_len(0)?;
+
+    Ok(tasks.len())
+}
+
+pub fn remove_expired_tasks() -> anyhow::Result<usize> {
+    let (file, mut tasks) = get_tasks_and_file()?;
+    let origin_len = tasks.len();
+    tasks.retain(|t| !t.expired);
+    file.set_len(0)?;
+    serde_json::to_writer_pretty(file, &tasks)?;
+
+    Ok(origin_len - tasks.len())
 }
 
 fn get_tasks() -> anyhow::Result<Vec<Task>> {
@@ -110,7 +128,7 @@ fn get_tasks() -> anyhow::Result<Vec<Task>> {
 pub fn list_tasks() -> anyhow::Result<()> {
     let tasks = get_tasks()?;
     if tasks.is_empty() {
-        println!("{}", "Task list is empty!".bright_red());
+        println!("{}", "warning: Task list is empty!".bright_yellow());
     } else {
         tasks.into_iter().enumerate().for_each(|(index, task)| {
             println!("{}: {}", index + 1, task)
@@ -124,7 +142,7 @@ pub fn tasks_of_today() -> anyhow::Result<()> {
     println!("{} {} {} {}.", date::get_greeting().bright_green(), "Today is".bright_green(), date::get_date().bright_green(), date::get_weekday().to_string().bright_green());
     let tasks = get_tasks()?;
     if tasks.is_empty() {
-        println!("{}", "Task list is empty!".bright_red());
+        println!("{}", "warning: Task list is empty!".bright_yellow());
     } else {
         let tasks = tasks.into_iter().filter(|t| date::date_check(t)).collect::<Vec<Task>>();
         if !tasks.is_empty() {

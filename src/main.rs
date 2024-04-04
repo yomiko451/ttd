@@ -24,10 +24,22 @@ fn main() {
                 Err(e) => println!("{}", e),
             }
         },
-        Some(cli::Commands::Remove { index }) => {
-            match storage::complete_task(index) {
-                Ok(msg) => println!("{} {}", "Task removed:".bright_red() ,msg),
-                Err(e) => println!("{}", e),
+        Some(cli::Commands::Remove { index, expired, all }) => {
+            if expired {
+                match storage::remove_expired_tasks() {
+                    Ok(count) => println!("{}{}", "Expired tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow()),
+                    Err(e) => println!("{}", e),
+                }
+            } else if all {
+                match storage::clear_tasks() {
+                    Ok(count) => println!("{}{}", "Task list cleared! count: ".bright_yellow(), count.to_string().bright_yellow()),
+                   Err(e) => println!("{}", e),
+                }
+            } else {
+                match storage::remove_task(index) {
+                    Ok(msg) => println!("{} {}", "Task removed:".bright_yellow() ,msg),
+                    Err(e) => println!("{}", e),
+                }  
             }
         },
         Some(cli::Commands::List) => {

@@ -30,7 +30,19 @@ pub enum Commands {
 
     /// Remove a task from the journal file by position.
     #[command(visible_aliases = ["r", "rm"])]
-    Remove{ index: usize },
+    Remove{
+        /// remove task by index
+        #[arg(required_unless_present_any = ["expired", "all"])]
+        index: Option<usize>,
+
+        /// remove expired tasks
+        #[arg(short, long, conflicts_with = "index")]
+        expired: bool,
+
+        /// remove all tasks
+        #[arg(short, long, exclusive = true)]
+        all: bool
+     },
 
     /// List all tasks in the journal file.
     #[command(visible_aliases = ["l", "ls"])]
