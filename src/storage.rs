@@ -1,11 +1,9 @@
 use std::{
-    fs::{File, OpenOptions}, 
-    io::{Seek, SeekFrom}, 
-    path::PathBuf
+    fs::{File, OpenOptions}, io::{self, BufRead, Seek, SeekFrom, Write}, path::PathBuf
 };
 use anyhow::anyhow;
 use crate::{
-    date,
+    date::{self, parse_date, parse_weekday},
     task::Task
 };
 use colored::Colorize;
@@ -70,7 +68,7 @@ pub fn get_tasks_and_file() -> anyhow::Result<(File, Vec<Task>)> {
     Ok((file, tasks))
 }
 
-pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> anyhow::Result<Task> {
+pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> anyhow::Result<()> {
     let mut task = Task::build(text, weekday, date)?;
     let (file, mut tasks) = get_tasks_and_file()?;
     if date::expired_check(&task) {
@@ -80,8 +78,64 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> 
     let msg = task.clone();
     tasks.push(task);
     serde_json::to_writer_pretty(file, &tasks)?;
+    println!("{} {}", "Task added:".bright_green(), msg);
 
-    Ok(msg)
+    Ok(())
+}
+
+pub fn handle_user_input() -> anyhow::Result<()> {
+    println!("{}", "Enable multi-line input mode".bright_green());
+    println!("{}", "Please enter tasks to be added in the format: Task content + space + Weekday/year-month-day. ".bright_green());
+    println!("{}", "Press Enter on an empty line to exit.".bright_green());
+    loop {
+        print!("> ");
+        io::stdout().flush()?;
+        let mut input = String::new();
+        match io::stdin().lock().read_line(&mut input) {
+            Ok(_) => {
+                let input = input.trim();
+                if input.is_empty() {
+                    println!("{}", "Exit multi-line input mode".bright_green());
+                    break;
+                }
+                let input = input.split(" ").collect::<Vec<&str>>();
+                if input.len() == 2 {
+                    let text = input[0];
+                    let weekday_or_date = input[1];
+                    add_tasks(text, weekday_or_date)?;
+                } else {
+                    println!("{}", "error: Invalid input!".bright_red());
+                }
+                
+            },
+            Err(error) => {
+                println!("Error reading input: {}", error);
+                break;
+            },
+        }
+    }
+
+    Ok(())
+}
+
+pub fn add_tasks(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
+    match parse_date(weekday_or_date) {
+        Ok(date) => {
+            add_task(text.to_string(), Option::None, Some(date.format("%Y%m%d").to_string()))?;
+            return Ok(());
+        },
+        Err(_) => {
+            match parse_weekday(weekday_or_date) {
+                Ok(weekday) => {
+                    add_task(text.to_string(), Some(weekday.to_string()), Option::None)?;
+                },
+                Err(_) => return Err(anyhow!("{}", "error: Invalid date/weekday, please enter a valid date/weekday (e.g. 20240402/Mon, FRI, tue, )".bright_red()))
+            }
+        }
+    }
+    
+
+    Ok(())
 }
 
 pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<Task> {
@@ -94,25 +148,29 @@ pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<Task> {
     tasks.remove(task_index - 1);
     file.set_len(0)?;
     serde_json::to_writer_pretty(file, &tasks)?;
+    println!("{} {}", "Task removed:".bright_yellow() ,msg);
 
     Ok(msg)
 }
 
-pub fn clear_tasks() -> anyhow::Result<usize> {
+pub fn clear_tasks() -> anyhow::Result<()> {
     let (file, tasks) = get_tasks_and_file()?;
     file.set_len(0)?;
-
-    Ok(tasks.len())
+    println!("{}{}", "Task list cleared! count: ".bright_yellow(), tasks.len().to_string().bright_yellow());
+    
+    Ok(())
 }
 
-pub fn remove_expired_tasks() -> anyhow::Result<usize> {
+pub fn remove_expired_tasks() -> anyhow::Result<()> {
     let (file, mut tasks) = get_tasks_and_file()?;
     let origin_len = tasks.len();
     tasks.retain(|t| !t.expired);
     file.set_len(0)?;
     serde_json::to_writer_pretty(file, &tasks)?;
+    let count = origin_len - tasks.len();
+    println!("{}{}", "Expired tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
 
-    Ok(origin_len - tasks.len())
+    Ok(())
 }
 
 fn get_tasks() -> anyhow::Result<Vec<Task>> {
@@ -168,5 +226,10 @@ mod tests {
     fn test_get_journal_file() {
         let journal_file = get_path();
         println!("Journal file: {:?}", journal_file);
+    }
+
+    #[test]
+    fn test_handle_user_input() {
+        handle_user_input().unwrap();
     }
 }

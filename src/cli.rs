@@ -13,25 +13,29 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Write tasks to the journal file.
+    /// Add a task to the journal file.
     #[command(visible_aliases = ["a", "ad"])]
     Add{
         /// set content for the task
-        text: String,
+        text: Option<String>, // TODO 当没有其他参数时，这个参数必须有
         
         /// set repeat weekday for the task
-        #[arg(short, long, conflicts_with = "date", group = "week")]
+        #[arg(short, long, conflicts_with = "date")]
         weekday: Option<String>,
 
         /// set one-time-date for the task
         #[arg(short, long)]
         date: Option<String>,
-     },
 
-    /// Remove a task from the journal file by position.
+        /// Add multiple tasks to the journal file.
+        #[arg(short, long, exclusive = true)]
+        multiple: bool
+    }, 
+
+    /// Remove one or multiple tasks from the journal file.
     #[command(visible_aliases = ["r", "rm"])]
     Remove{
-        /// remove task by index
+        /// remove a task by index
         #[arg(required_unless_present_any = ["expired", "all"])]
         index: Option<usize>,
 
@@ -42,13 +46,13 @@ pub enum Commands {
         /// remove all tasks
         #[arg(short, long, exclusive = true)]
         all: bool
-     },
+    },
 
     /// List all tasks in the journal file.
     #[command(visible_aliases = ["l", "ls"])]
     List,
 
-    /// List tasks which are due today.
+    /// List tasks to be done today.
     #[command(visible_aliases = ["t", "td"])]
     Today
 }

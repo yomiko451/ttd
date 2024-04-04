@@ -92,4 +92,10 @@ mod tests {
         let timestam0_2 = parse_date("20230503").unwrap();
         assert_eq!(timestamp_1.cmp(&timestam0_2), Ordering::Less);
     }
+
+    #[test]
+    fn test_parse_date() {
+        let date = parse_date("20230501");
+        assert!(date.is_ok());
+    }
 }

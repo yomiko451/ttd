@@ -18,26 +18,33 @@ fn main() {
     }
 
     match cli.command {
-        Some(cli::Commands::Add { text, weekday, date }) => {
-            match storage::add_task(text, weekday, date) {
-                Ok(msg) => println!("{} {}", "Task added:".bright_green(), msg),
-                Err(e) => println!("{}", e),
+        Some(cli::Commands::Add { text, weekday, date, multiple }) => {
+            if multiple {
+                match storage::handle_user_input() {
+                    Ok(_) => println!("{}", "All tasks has been added successfully!".bright_green()),
+                    Err(e) => println!("{}", e),
+                }
+            } else {
+                match storage::add_task(text.unwrap(), weekday, date) {
+                    Ok(_) => {}
+                    Err(e) => println!("{}", e),
+                }
             }
         },
         Some(cli::Commands::Remove { index, expired, all }) => {
             if expired {
                 match storage::remove_expired_tasks() {
-                    Ok(count) => println!("{}{}", "Expired tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow()),
+                    Ok(_) => {}
                     Err(e) => println!("{}", e),
                 }
             } else if all {
                 match storage::clear_tasks() {
-                    Ok(count) => println!("{}{}", "Task list cleared! count: ".bright_yellow(), count.to_string().bright_yellow()),
+                    Ok(_) => {}
                    Err(e) => println!("{}", e),
                 }
             } else {
                 match storage::remove_task(index) {
-                    Ok(msg) => println!("{} {}", "Task removed:".bright_yellow() ,msg),
+                    Ok(_) => {}
                     Err(e) => println!("{}", e),
                 }  
             }
