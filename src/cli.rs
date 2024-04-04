@@ -13,7 +13,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Add a task to the journal file.
+    /// Add one or multiple tasks to the journal file.
     #[command(visible_aliases = ["a", "ad"])]
     Add{
         /// set content for the task

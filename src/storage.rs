@@ -86,7 +86,8 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> 
 pub fn handle_user_input() -> anyhow::Result<()> {
     println!("{}", "Enable multi-line input mode".bright_green());
     println!("{}", "Please enter tasks to be added in the format: Task content + space + Weekday/year-month-day. ".bright_green());
-    println!("{}", "Press Enter on an empty line to exit.".bright_green());
+    println!("{}", "For example: 'Do something awesome' Mon, 'Do something even more awesome' 20240402".bright_green());
+    println!("{}", "Enter on an empty line if you want to exit multi-line input mode.".bright_green());
     loop {
         print!("> ");
         io::stdout().flush()?;
@@ -214,7 +215,7 @@ pub fn tasks_of_today() -> anyhow::Result<()> {
     } else {
         let tasks = tasks.into_iter().filter(|t| date::date_check(t)).collect::<Vec<Task>>();
         if !tasks.is_empty() {
-            println!("{}", "Here is today’s to-do list, have a nice day!".bright_green());
+            println!("{}", "Here is today’s todo list, have a nice day!".bright_green());
             let mut index = 1;
             for task in tasks {
                 println!("{}: {}", index, task);

@@ -21,25 +21,25 @@ fn main() {
         Some(cli::Commands::Add { text, weekday, date, multiple }) => {
             if multiple {
                 match storage::handle_user_input() {
-                    Ok(_) => println!("{}", "All tasks has been added successfully!".bright_green()),
+                    Ok(_) => {},
                     Err(e) => println!("{}", e),
                 }
             } else {
                 match storage::add_task(text.unwrap(), weekday, date) {
-                    Ok(_) => {}
-                    Err(e) => println!("{}", e),
+                    Ok(_) => {},
+                    Err(e) => println!("{}", e)
                 }
             }
         },
         Some(cli::Commands::Remove { index, expired, all }) => {
             if expired {
                 match storage::remove_expired_tasks() {
-                    Ok(_) => {}
+                    Ok(_) => {},
                     Err(e) => println!("{}", e),
                 }
             } else if all {
                 match storage::clear_tasks() {
-                    Ok(_) => {}
+                    Ok(_) => {},
                    Err(e) => println!("{}", e),
                 }
             } else {
