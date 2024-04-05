@@ -195,14 +195,14 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
             println!("{}{}", "Flexible tasks removed! count: ".bright_yellow(),count.to_string().bright_yellow());
         },
         (_, _, true, _) => {
-            tasks.retain(|t| !t.date.is_empty());
+            tasks.retain(|t| t.date.is_empty());
             file.set_len(0)?;
             serde_json::to_writer_pretty(file, &tasks)?;
             let count = origin_len - tasks.len();
             println!("{}{}", "One-time-date tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
         },
         _ => {
-            tasks.retain(|t| !t.weekday.is_empty());
+            tasks.retain(|t| t.weekday.is_empty());
             file.set_len(0)?;
             serde_json::to_writer_pretty(file, &tasks)?;
             let count = origin_len - tasks.len();

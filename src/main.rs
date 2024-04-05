@@ -31,15 +31,15 @@ fn main() {
                 }
             }
         },
-        Some(cli::Commands::Remove { index, expired, all, flexible, date, weekday }) => {
-            match (index, expired, all, flexible, date, weekday) {
+        Some(cli::Commands::Remove { index, all, expired, flexible, date, weekday }) => {
+            match (index, all, expired, flexible, date, weekday) {
                 (index, false, false, false , false, false) => {
                     match storage::remove_task(index) {
                         Ok(_) => {}
                         Err(e) => println!("{}", e),
                     }  
                 },
-                (_, _, true, _, _, _) => {
+                (_, true, _, _, _, _) => {
                     match storage::clear_tasks() {
                         Ok(_) => {},
                         Err(e) => println!("{}", e),
