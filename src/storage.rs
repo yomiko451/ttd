@@ -172,14 +172,43 @@ pub fn clear_tasks() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn remove_expired_tasks() -> anyhow::Result<()> {
+pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday: bool) -> anyhow::Result<()> {
     let (file, mut tasks) = get_tasks_and_file()?;
+    if tasks.is_empty() {
+        println!("{}", "warning: Task list is empty!".bright_yellow());
+        return Ok(());
+    }
     let origin_len = tasks.len();
-    tasks.retain(|t| !t.expired);
-    file.set_len(0)?;
-    serde_json::to_writer_pretty(file, &tasks)?;
-    let count = origin_len - tasks.len();
-    println!("{}{}", "Expired tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
+    match (expired, flexible, date, weekday) {
+        (true, _, _, _) => {
+            tasks.retain(|t| !t.expired);
+            file.set_len(0)?;
+            serde_json::to_writer_pretty(file, &tasks)?;
+            let count = origin_len - tasks.len();
+            println!("{}{}", "Expired tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
+        },
+        (_, true, _, _) => {
+            tasks.retain(|t| !t.date.is_empty() || !t.weekday.is_empty());
+            file.set_len(0)?;
+            serde_json::to_writer_pretty(file, &tasks)?;
+            let count = origin_len - tasks.len();
+            println!("{}{}", "Flexible tasks removed! count: ".bright_yellow(),count.to_string().bright_yellow());
+        },
+        (_, _, true, _) => {
+            tasks.retain(|t| !t.date.is_empty());
+            file.set_len(0)?;
+            serde_json::to_writer_pretty(file, &tasks)?;
+            let count = origin_len - tasks.len();
+            println!("{}{}", "One-time-date tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
+        },
+        _ => {
+            tasks.retain(|t| !t.weekday.is_empty());
+            file.set_len(0)?;
+            serde_json::to_writer_pretty(file, &tasks)?;
+            let count = origin_len - tasks.len();
+            println!("{}{}", "Repeat weekday tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
+        }
+    }
 
     Ok(())
 }
@@ -194,21 +223,54 @@ fn get_tasks() -> anyhow::Result<Vec<Task>> {
     Ok(tasks)
 }
 
-pub fn list_tasks(flexible: bool) -> anyhow::Result<()> {
+pub fn list_tasks_by_filter(flexible: bool, expired: bool, date: bool, weekday: bool) -> anyhow::Result<()> {
     let mut tasks = get_tasks()?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
-    } else {
-        if flexible {
+        return Ok(());
+    }
+    match (flexible, expired, date, weekday) {
+        (true, _, _, _) => {
             tasks.retain(|t| t.date.is_empty() && t.weekday.is_empty());
             if tasks.is_empty() {
                 println!("{}", "warning: There are no flexible tasks!".bright_yellow());
             } else {
                 tasks.into_iter().enumerate().for_each(|(index, task)| {
                     println!("{}: {}", index + 1, task)
-               });
+                });
             }
-        } else {
+        },
+        (_, true, _, _) => {
+            tasks.retain(|t| t.expired);
+            if tasks.is_empty() {
+                println!("{}", "warning: There are no expired tasks!".bright_yellow());
+            } else {
+                tasks.into_iter().enumerate().for_each(|(index, task)| {
+                    println!("{}: {}", index + 1, task)
+                });
+            }
+        },
+        (_, _, true, _) => {
+            tasks.retain(|t| !t.date.is_empty());
+            if tasks.is_empty() {
+                println!("{}", "warning: There are no tasks with one-time-date!".bright_yellow());
+            } else {
+                tasks.into_iter().enumerate().for_each(|(index, task)| {
+                    println!("{}: {}", index + 1, task)
+                });
+            }
+        },
+        (_, _, _, true) => {
+            tasks.retain(|t| !t.weekday.is_empty());
+            if tasks.is_empty() {
+                println!("{}", "warning: There are no tasks with repeat weekday!".bright_yellow());
+            } else {
+                tasks.into_iter().enumerate().for_each(|(index, task)| {
+                    println!("{}: {}", index + 1, task)
+                })
+            }
+        },
+        _ => {
             tasks.into_iter().enumerate().for_each(|(index, task)| {
                 println!("{}: {}", index + 1, task)
             });

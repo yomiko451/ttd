@@ -31,26 +31,30 @@ fn main() {
                 }
             }
         },
-        Some(cli::Commands::Remove { index, expired, all }) => {
-            if expired {
-                match storage::remove_expired_tasks() {
-                    Ok(_) => {},
-                    Err(e) => println!("{}", e),
+        Some(cli::Commands::Remove { index, expired, all, flexible, date, weekday }) => {
+            match (index, expired, all, flexible, date, weekday) {
+                (index, false, false, false , false, false) => {
+                    match storage::remove_task(index) {
+                        Ok(_) => {}
+                        Err(e) => println!("{}", e),
+                    }  
+                },
+                (_, _, true, _, _, _) => {
+                    match storage::clear_tasks() {
+                        Ok(_) => {},
+                        Err(e) => println!("{}", e),
+                    }
+                },
+                _ => {
+                    match storage::remove_tasks_by_filter(expired, flexible, date, weekday) {
+                        Ok(_) => {},
+                        Err(e) => println!("{}", e),
+                    }
                 }
-            } else if all {
-                match storage::clear_tasks() {
-                    Ok(_) => {},
-                   Err(e) => println!("{}", e),
-                }
-            } else {
-                match storage::remove_task(index) {
-                    Ok(_) => {}
-                    Err(e) => println!("{}", e),
-                }  
             }
         },
-        Some(cli::Commands::List{ flexible }) => {
-            match storage::list_tasks(flexible) {
+        Some(cli::Commands::List{ flexible, expired, date, weekday }) => {
+            match storage::list_tasks_by_filter(flexible, expired, date, weekday) {
                 Ok(_) => {},
                 Err(e) => println!("{}", e),
             }

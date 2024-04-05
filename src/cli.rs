@@ -43,6 +43,18 @@ pub enum Commands {
         #[arg(short, long, exclusive = true)]
         expired: bool,
 
+        /// remove all flexible tasks
+        #[arg(short, long, exclusive = true)]
+        flexible: bool,
+
+        /// remove all tasks with one-time-date
+        #[arg(short, long, exclusive = true)]
+        date: bool,
+
+        /// remove all tasks with repeat weekday
+        #[arg(short, long, exclusive = true)]
+        weekday: bool,
+
         /// remove all tasks
         #[arg(short, long, exclusive = true)]
         all: bool
@@ -51,8 +63,21 @@ pub enum Commands {
     /// List all tasks in the journal file.
     #[command(visible_aliases = ["l", "ls"])]
     List{
-        #[arg(short, long)]
-        flexible: bool
+        /// List all flexible tasks.
+        #[arg(short, long, exclusive = true )]
+        flexible: bool,
+
+        /// List all expired tasks.
+        #[arg(short, long, exclusive = true )]
+        expired: bool,
+
+        /// List all tasks with one-time-date.
+        #[arg(short, long, exclusive = true )]
+        date: bool,
+
+        /// List all tasks with repeat weekday.
+        #[arg(short, long, exclusive = true )]
+        weekday: bool
     },
 
     /// List tasks to be done today.
