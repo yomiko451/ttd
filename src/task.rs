@@ -5,6 +5,7 @@ use colored::Colorize;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Task {
+    pub id: usize,
     pub text: String,
     pub created_at: String,
     pub weekday: String,
@@ -27,6 +28,7 @@ impl Task {
             None => "".to_string()
         };
         Ok(Task {
+            id: 0,
             text,
             created_at: date::get_time(),
             weekday,
@@ -40,7 +42,8 @@ impl Display for Task {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} - {}{}{} - created at {}",
+            "{}: {} - {}{}{} - created at {}",
+            format!("[task #{}]", self.id).bright_green(),
             self.text.bright_cyan(),
             self.weekday.bright_green(),
             self.date.bright_green(),

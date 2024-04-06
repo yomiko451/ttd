@@ -75,6 +75,7 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> 
         task.expired = true;
         println!("{}", "warning: this task is expired!".bright_yellow())
     }
+    task.id = tasks.len() + 1;
     let msg = task.clone();
     tasks.push(task);
     serde_json::to_writer_pretty(file, &tasks)?;
@@ -129,7 +130,7 @@ fn parse_input(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
                 Ok(weekday) => {
                     add_task(text.to_string(), Some(weekday.to_string()), Option::None)?;
                 },
-                Err(_) => return Err(anyhow!("{}", "error: Invalid date/weekday, please enter a valid date/weekday (e.g. 20240402/Mon, FRI, tue, )".bright_red()))
+                Err(_) => return Err(anyhow!("{}", "error: Invalid date/weekday, please enter a valid date/weekday (e.g. 20240402, Mon, FRI, tue, )".bright_red()))
             }
         }
     }
@@ -137,7 +138,7 @@ fn parse_input(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<Task> {
+pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<()> {
     let (file, mut tasks) = get_tasks_and_file()?;
     let index = match task_index {
         Some(index) => {
@@ -155,13 +156,13 @@ pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<Task> {
             }
         }
     };
-    let msg = tasks.get(index).unwrap().to_owned();
-    tasks.remove(index);
+    let msg = tasks.remove(index);
+    let tasks = id_reset(tasks);
     file.set_len(0)?;
     serde_json::to_writer_pretty(file, &tasks)?;
     println!("{} {}", "Task removed:".bright_yellow() ,msg);
 
-    Ok(msg)
+    Ok(())
 }
 
 pub fn clear_tasks() -> anyhow::Result<()> {
@@ -182,6 +183,7 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
     match (expired, flexible, date, weekday) {
         (true, _, _, _) => {
             tasks.retain(|t| !t.expired);
+            let tasks = id_reset(tasks);
             file.set_len(0)?;
             serde_json::to_writer_pretty(file, &tasks)?;
             let count = origin_len - tasks.len();
@@ -189,6 +191,7 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
         },
         (_, true, _, _) => {
             tasks.retain(|t| !t.date.is_empty() || !t.weekday.is_empty());
+            let tasks = id_reset(tasks);
             file.set_len(0)?;
             serde_json::to_writer_pretty(file, &tasks)?;
             let count = origin_len - tasks.len();
@@ -196,6 +199,7 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
         },
         (_, _, true, _) => {
             tasks.retain(|t| t.date.is_empty());
+            let tasks = id_reset(tasks);
             file.set_len(0)?;
             serde_json::to_writer_pretty(file, &tasks)?;
             let count = origin_len - tasks.len();
@@ -203,6 +207,7 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
         },
         _ => {
             tasks.retain(|t| t.weekday.is_empty());
+            let tasks = id_reset(tasks);
             file.set_len(0)?;
             serde_json::to_writer_pretty(file, &tasks)?;
             let count = origin_len - tasks.len();
@@ -211,6 +216,13 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
     }
 
     Ok(())
+}
+
+fn id_reset(tasks: Vec<Task>) -> Vec<Task> {
+    tasks.into_iter().enumerate().map(|(index, mut task)| {
+        task.id = index + 1;
+        task
+    }).collect()
 }
 
 fn get_tasks() -> anyhow::Result<Vec<Task>> {
@@ -293,7 +305,7 @@ pub fn tasks_of_today() -> anyhow::Result<()> {
                 println!("{}: {}", index + 1, task)
             });
         } else {
-            println!("{}", "Take a break! there is no task today!".bright_green());
+            println!("{}", "Take a break! there are no tasks today!".bright_green());
         };
     }
     
