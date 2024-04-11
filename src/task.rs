@@ -13,6 +13,13 @@ pub struct Task {
     pub expired: bool
 }
 
+pub enum TaskStatus {
+    Expired,
+    Weekday,
+    Flexible,
+    Date
+}
+
 impl Task {
     pub fn build(text: String, weekday: Option<String>, date: Option<String>) -> anyhow::Result<Task> {
         let weekday = match weekday {

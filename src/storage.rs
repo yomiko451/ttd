@@ -4,7 +4,7 @@ use std::{
 use anyhow::anyhow;
 use crate::{
     date::{self, parse_date, parse_weekday},
-    task::Task
+    task::{Task, TaskStatus}
 };
 use colored::Colorize;
 
@@ -76,7 +76,7 @@ pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> 
         println!("{}", "warning: this task is expired!".bright_yellow())
     }
     task.id = tasks.len() + 1;
-    let msg = task.clone();
+    let msg = format!("{}", task);
     tasks.push(task);
     serde_json::to_writer_pretty(file, &tasks)?;
     println!("{} {}", "Task added:".bright_green(), msg);
@@ -160,7 +160,7 @@ pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<()> {
     let tasks = id_reset(tasks);
     file.set_len(0)?;
     serde_json::to_writer_pretty(file, &tasks)?;
-    println!("{} {}", "Task removed:".bright_yellow() ,msg);
+    println!("{} {}", "Task removed!:".bright_yellow() ,msg);
 
     Ok(())
 }
@@ -174,48 +174,71 @@ pub fn clear_tasks() -> anyhow::Result<()> {
 }
 
 pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday: bool) -> anyhow::Result<()> {
-    let (file, mut tasks) = get_tasks_and_file()?;
+    let (file, tasks) = get_tasks_and_file()?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
         return Ok(());
     }
     let origin_len = tasks.len();
-    match (expired, flexible, date, weekday) {
-        (true, _, _, _) => {
-            tasks.retain(|t| !t.expired);
-            let tasks = id_reset(tasks);
-            file.set_len(0)?;
-            serde_json::to_writer_pretty(file, &tasks)?;
-            let count = origin_len - tasks.len();
-            println!("{}{}", "Expired tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
-        },
-        (_, true, _, _) => {
-            tasks.retain(|t| !t.date.is_empty() || !t.weekday.is_empty());
-            let tasks = id_reset(tasks);
-            file.set_len(0)?;
-            serde_json::to_writer_pretty(file, &tasks)?;
-            let count = origin_len - tasks.len();
-            println!("{}{}", "Flexible tasks removed! count: ".bright_yellow(),count.to_string().bright_yellow());
-        },
-        (_, _, true, _) => {
-            tasks.retain(|t| t.date.is_empty());
-            let tasks = id_reset(tasks);
-            file.set_len(0)?;
-            serde_json::to_writer_pretty(file, &tasks)?;
-            let count = origin_len - tasks.len();
-            println!("{}{}", "One-time-date tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
-        },
-        _ => {
-            tasks.retain(|t| t.weekday.is_empty());
-            let tasks = id_reset(tasks);
-            file.set_len(0)?;
-            serde_json::to_writer_pretty(file, &tasks)?;
-            let count = origin_len - tasks.len();
-            println!("{}{}", "Repeat weekday tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
-        }
-    }
+    let (retained_tasks, removed_tasks) = match (expired, flexible, date, weekday) {
+        (true, _, _, _) => tasks_filter(tasks, TaskStatus::Expired),
+        (_, true, _, _) => tasks_filter(tasks, TaskStatus::Flexible),
+        (_, _, true, _) => tasks_filter(tasks, TaskStatus::Date),
+        _ => tasks_filter(tasks, TaskStatus::Weekday)
+    };
+    file.set_len(0)?;
+    serde_json::to_writer_pretty(file, &retained_tasks)?;
+    let count = origin_len - retained_tasks.len();
+    println!("{}{}", "Specified tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
+    removed_tasks.into_iter().enumerate().for_each(|(index, task)| {
+        println!("{}: {}", index + 1, task)
+    });
 
     Ok(())
+}
+
+fn tasks_filter(tasks: Vec<Task>, remove_flag: TaskStatus) -> (Vec<Task>, Vec<Task>) {
+    let mut removed_tasks = vec![];
+    let mut retained_tasks = vec![];
+    match remove_flag {
+        TaskStatus::Expired => {
+            for task in tasks {
+                if task.expired {
+                    removed_tasks.push(task);
+                } else {
+                    retained_tasks.push(task);
+                }
+            }
+        },
+        TaskStatus::Weekday => {
+            for task in tasks {
+                if task.date.is_empty() {
+                    retained_tasks.push(task);
+                } else {
+                    removed_tasks.push(task);
+                }
+            }
+        },
+        TaskStatus::Date => {
+            for task in tasks {
+                if task.date.is_empty() {
+                    retained_tasks.push(task);
+                } else {
+                    removed_tasks.push(task);
+                }
+            }
+        },
+        TaskStatus::Flexible => {
+            for task in tasks {
+                if task.date.is_empty() && task.weekday.is_empty() {
+                    removed_tasks.push(task);
+                } else {
+                    retained_tasks.push(task);
+                }
+            }
+        }
+    }
+    (id_reset(retained_tasks), removed_tasks)
 }
 
 fn id_reset(tasks: Vec<Task>) -> Vec<Task> {
