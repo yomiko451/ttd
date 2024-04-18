@@ -18,43 +18,62 @@ fn main() {
     }
 
     match cli.command {
-        Some(cli::Commands::Add { text, weekday, date, multiple }) => {
+        Some(cli::Commands::Add {
+            text,
+            weekday,
+            day,
+            date,
+            page,
+            multiple,
+        }) => {
             if multiple {
                 match storage::handle_user_input() {
                     Ok(_) => {},
                     Err(e) => println!("{}", e),
                 }
             } else {
-                match storage::add_task(text.unwrap(), weekday, date) {
-                    Ok(_) => {},
+                match storage::parse_task(text.unwrap(), weekday, day, date, page) {
+                    Ok(task) => {
+                        if let Err(e) = storage::add_task(task) {
+                            println!("{}", e);
+                        }
+                    },
                     Err(e) => println!("{}", e)
                 }
             }
         },
-        Some(cli::Commands::Remove { index, all, expired, flexible, date, weekday }) => {
-            match (index, all, expired, flexible, date, weekday) {
-                (index, false, false, false , false, false) => {
-                    match storage::remove_task(index) {
+        Some(cli::Commands::Remove { 
+            id, 
+            all, 
+            expired, 
+            once_task,
+            month_task,
+            week_task,
+            book_mark
+        }) => {
+            match (id, all, expired, once_task, month_task, week_task, book_mark) {
+                (id, false, false, false, false, false, false) => {
+                    match storage::remove_task_by_id(id) {
                         Ok(_) => {}
                         Err(e) => println!("{}", e),
                     }  
                 },
-                (_, true, _, _, _, _) => {
+                (_, true, ..) => {
                     match storage::clear_tasks() {
                         Ok(_) => {},
                         Err(e) => println!("{}", e),
                     }
                 },
                 _ => {
-                    match storage::remove_tasks_by_filter(expired, flexible, date, weekday) {
+                    match storage::remove_tasks_by_filter(expired, once_task, month_task, week_task, book_mark) {
                         Ok(_) => {},
                         Err(e) => println!("{}", e),
                     }
                 }
             }
         },
-        Some(cli::Commands::List{ flexible, expired, date, weekday }) => {
-            match storage::list_tasks_by_filter(flexible, expired, date, weekday) {
+        Some(cli::Commands::List{ expired, once_task, month_task, week_task, book_mark }) => {
+            match storage::list_tasks_by_filter(expired, once_task, month_task, week_task, book_mark) {
                 Ok(_) => {},
                 Err(e) => println!("{}", e),
             }
@@ -62,6 +81,12 @@ fn main() {
         Some(cli::Commands::Today) => {
             if let Err(e) = storage::tasks_of_today() {
                 println!("{}", e);
+            }
+        },
+        Some(cli::Commands::Update{ id, new_page }) => {
+            match storage::update_bookmark(id, new_page) {
+                Ok(_) => {},
+                Err(e) => println!("{}", e),
             }
         },
         None => ()

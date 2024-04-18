@@ -3,8 +3,8 @@ use std::{
 };
 use anyhow::anyhow;
 use crate::{
-    date::{self, parse_date, parse_weekday},
-    task::{Task, TaskStatus}
+    date,
+    task::{Task, TaskType}
 };
 use colored::Colorize;
 
@@ -25,8 +25,8 @@ pub fn init() -> anyhow::Result<()> {
     let mut tasks = collect_tasks(&file)?;
     if !tasks.is_empty() {
         tasks.iter_mut().for_each(|t| {
-            if date::expired_check(&t) {
-                t.expired = true;
+            if let TaskType::OnceTask{ text: _, date, ref mut expired } = &mut t.content {
+                *expired = date::expired_check(&date);
             }
         })
     }
@@ -57,24 +57,60 @@ fn collect_tasks(mut file: &File) -> anyhow::Result<Vec<Task>> {
     Ok(tasks)
 }
 
-pub fn get_tasks_and_file() -> anyhow::Result<(File, Vec<Task>)> {
+pub fn update_bookmark(id: usize, new_page: usize) -> anyhow::Result<()> {
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
         .write(true)
         .open(path)?;
-    let tasks = collect_tasks(&file)?;
-
-    Ok((file, tasks))
+    let mut tasks = collect_tasks(&file)?;
+    if let Some(task) = tasks.get_mut(id - 1) {
+        if let TaskType::BookMark { text: _, page: ref mut p } = &mut task.content {
+            *p = new_page;
+        } else {
+            return Err(anyhow!("error: The task is not a bookmark, please enter a valid index (e.g. 1, 2, 3, etc.)".bright_red()));
+        }
+    } else {
+        return Err(anyhow!("error: Invalid index, please enter a valid index (e.g. 1, 2, 3, etc.)".bright_red()));
+    }
+    let new_book_mark = tasks.get(id - 1).unwrap();
+    println!("{} {}", "page updated!:".bright_green() , new_book_mark);
+    
+    Ok(())
 }
 
-pub fn add_task(text: String, weekday: Option<String>, date: Option<String>) -> anyhow::Result<()> {
-    let mut task = Task::build(text, weekday, date)?;
-    let (file, mut tasks) = get_tasks_and_file()?;
-    if date::expired_check(&task) {
-        task.expired = true;
-        println!("{}", "warning: this task is expired!".bright_yellow())
+pub fn parse_task(text: String, weekday: Option<String>, day: Option<usize>, date: Option<String>, page: Option<usize>) -> anyhow::Result<Task> {
+    match (weekday, day, date, page) {
+        (Some(w), _, _, _) => {
+            let w = date::parse_weekday(&w)?.to_string();
+            Ok(Task::build(TaskType::WeekTask { text, weekday: w }))
+        },
+        (_, Some(d), _, _) => {
+            if d <= 0 || d > 31 {
+                return Err(anyhow!("error: Invalid day, please enter a valid day (e.g. 1, 2, 3, etc.)".bright_red()));
+            }
+            Ok(Task::build(TaskType::MonthTask { text, day: d }))
+        },
+        (_, _, Some(d), _) => {
+            let d = date::parse_date(&d)?.format("%Y%m%d").to_string();
+            let expired = date::expired_check(&d);
+            if expired {
+                println!("{}", "warning: The task has expired.".bright_yellow());
+            }
+            Ok(Task::build(TaskType::OnceTask { text, date: d, expired }))
+        },
+        (_, _, _, Some(p)) => Ok(Task::build(TaskType::BookMark { text, page: p })),
+        _ => return Err(anyhow!("error: Invalid task type, please enter a valid task type (e.g. WeekTask, MonthTask, OnceTask, BookMark)".bright_red()))
     }
+}
+
+pub fn add_task(mut task: Task) -> anyhow::Result<()> {
+    let path = get_path()?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?;
+    let mut tasks = collect_tasks(&file)?;
     task.id = tasks.len() + 1;
     let msg = format!("{}", task);
     tasks.push(task);
@@ -101,12 +137,18 @@ pub fn handle_user_input() -> anyhow::Result<()> {
                     break;
                 }
                 let input = input.split(" ").collect::<Vec<&str>>();
-                if input.len() == 2 {
-                    let text = input[0];
-                    let weekday_or_date = input[1];
-                    parse_input(text, weekday_or_date)?;
+                if input.len() == 3 {
+                    let task_content = (input[0], input[2]);
+                    let task_type = input[1];
+                    if let Ok(task) = parse_input(task_content, task_type) {
+                        add_task(task)?;
+                    } else {
+                        println!("{}", "error: Invalid input!".bright_red());
+                        continue;
+                    }
                 } else {
                     println!("{}", "error: Invalid input!".bright_red());
+                    continue;
                 }     
             },
             Err(error) => {
@@ -119,33 +161,29 @@ pub fn handle_user_input() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn parse_input(text: &str, weekday_or_date: &str) -> anyhow::Result<()> {
-    match parse_date(weekday_or_date) {
-        Ok(date) => {
-            add_task(text.to_string(), Option::None, Some(date.format("%Y%m%d").to_string()))?;
-            return Ok(());
-        },
-        Err(_) => {
-            match parse_weekday(weekday_or_date) {
-                Ok(weekday) => {
-                    add_task(text.to_string(), Some(weekday.to_string()), Option::None)?;
-                },
-                Err(_) => return Err(anyhow!("{}", "error: Invalid date/weekday, please enter a valid date/weekday (e.g. 20240402, Mon, FRI, tue, )".bright_red()))
-            }
-        }
+fn parse_input(task_content: (&str, &str), task_type: &str) -> anyhow::Result<Task> {
+    match task_type {
+        "-w" => Ok(parse_task(task_content.0.to_owned(), Some(task_content.1.to_owned()), None, None, None)?),
+        "-d" => Ok(parse_task(task_content.0.to_owned(), None, Some(task_content.1.parse::<usize>()?), None, None)?),
+        "-o" => Ok(parse_task(task_content.0.to_owned(), None, None, Some(task_content.1.to_owned()), None)?),
+        "-b" => Ok(parse_task(task_content.0.to_owned(), None, None, None, Some(task_content.1.parse::<usize>()?))?),
+        _ => return Err(anyhow!("{}", "error: Invalid task type!".bright_red()))
     }
-
-    Ok(())
 }
 
-pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<()> {
-    let (file, mut tasks) = get_tasks_and_file()?;
-    let index = match task_index {
-        Some(index) => {
-            if index == 0 || index > tasks.len() {
+pub fn remove_task_by_id(id: Option<usize>) -> anyhow::Result<()> {
+    let path = get_path()?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?;
+    let mut tasks = collect_tasks(&file)?;
+    let index = match id {
+        Some(id) => {
+            if id == 0 || id > tasks.len() {
                 return Err(anyhow!("{}{}", "error: Invalid task index! the task index should be between 1 and ".bright_red(), tasks.len().to_string().bright_red()));
             } else {
-                index - 1
+                id - 1
             }
         },
         None => {
@@ -156,37 +194,87 @@ pub fn remove_task(task_index: Option<usize>) -> anyhow::Result<()> {
             }
         }
     };
-    let msg = tasks.remove(index);
+    let removed_task = tasks.remove(index);
     let tasks = id_reset(tasks);
     file.set_len(0)?;
     serde_json::to_writer_pretty(file, &tasks)?;
-    println!("{} {}", "Task removed!:".bright_yellow() ,msg);
+    println!("{} {}", "Task removed!:".bright_yellow() , removed_task);
 
     Ok(())
 }
 
 pub fn clear_tasks() -> anyhow::Result<()> {
-    let (file, tasks) = get_tasks_and_file()?;
+    let path = get_path()?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?;
+    let tasks = collect_tasks(&file)?;
     file.set_len(0)?;
     println!("{}{}", "Task list cleared! count: ".bright_yellow(), tasks.len().to_string().bright_yellow());
     
     Ok(())
 }
 
-pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday: bool) -> anyhow::Result<()> {
-    let (file, tasks) = get_tasks_and_file()?;
+pub fn remove_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, week_task: bool, book_mark: bool) -> anyhow::Result<()> {
+    let path = get_path()?;
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?;
+    let tasks = collect_tasks(&file)?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
         return Ok(());
     }
     let origin_len = tasks.len();
-    let (retained_tasks, removed_tasks) = match (expired, flexible, date, weekday) {
-        (true, _, _, _) => tasks_filter(tasks, TaskStatus::Expired),
-        (_, true, _, _) => tasks_filter(tasks, TaskStatus::Flexible),
-        (_, _, true, _) => tasks_filter(tasks, TaskStatus::Date),
-        _ => tasks_filter(tasks, TaskStatus::Weekday)
+    let (retained_tasks, removed_tasks): (Vec<Task>, Vec<Task>) = match (expired, once_task, month_task, week_task, book_mark) {
+        (true, _, _, _, _ ) => {
+            tasks.into_iter().partition(|task| {
+                match &task.content {
+                    TaskType::OnceTask { expired, .. } => {
+                        !expired.to_owned()
+                    },
+                    _ => true
+                }
+            })
+        },
+        (_, true, _, _, _) => {
+            tasks.into_iter().partition(|task| {
+                match &task.content {
+                    TaskType::OnceTask { .. } => false,
+                    _ => true
+                }
+            })
+        },
+        (_, _, true, _, _) => {
+            tasks.into_iter().partition(|task| {
+                match &task.content {
+                    TaskType::MonthTask { .. } => false,
+                    _ => true
+                }
+            })
+        },
+        (_, _, _, true, _) => {
+            tasks.into_iter().partition(|task| {
+                match &task.content {
+                    TaskType::WeekTask { .. } => false,
+                    _=> true
+                }
+            })
+        },
+        (_, _, _, _, true) => {
+            tasks.into_iter().partition(|task| {
+                match &task.content {
+                    TaskType::BookMark { .. } => false,
+                    _ => true
+                }
+            })
+        },
+        _ => return Err(anyhow!("{}", "error: Invalid filter!".bright_red()))
     };
     file.set_len(0)?;
+    let retained_tasks = id_reset(retained_tasks);
     serde_json::to_writer_pretty(file, &retained_tasks)?;
     let count = origin_len - retained_tasks.len();
     println!("{}{}", "Specified tasks removed! count: ".bright_yellow(), count.to_string().bright_yellow());
@@ -197,49 +285,6 @@ pub fn remove_tasks_by_filter(expired: bool, flexible: bool, date: bool, weekday
     Ok(())
 }
 
-fn tasks_filter(tasks: Vec<Task>, remove_flag: TaskStatus) -> (Vec<Task>, Vec<Task>) {
-    let mut removed_tasks = vec![];
-    let mut retained_tasks = vec![];
-    match remove_flag {
-        TaskStatus::Expired => {
-            for task in tasks {
-                if task.expired {
-                    removed_tasks.push(task);
-                } else {
-                    retained_tasks.push(task);
-                }
-            }
-        },
-        TaskStatus::Weekday => {
-            for task in tasks {
-                if task.date.is_empty() {
-                    retained_tasks.push(task);
-                } else {
-                    removed_tasks.push(task);
-                }
-            }
-        },
-        TaskStatus::Date => {
-            for task in tasks {
-                if task.date.is_empty() {
-                    retained_tasks.push(task);
-                } else {
-                    removed_tasks.push(task);
-                }
-            }
-        },
-        TaskStatus::Flexible => {
-            for task in tasks {
-                if task.date.is_empty() && task.weekday.is_empty() {
-                    removed_tasks.push(task);
-                } else {
-                    retained_tasks.push(task);
-                }
-            }
-        }
-    }
-    (id_reset(retained_tasks), removed_tasks)
-}
 
 fn id_reset(tasks: Vec<Task>) -> Vec<Task> {
     tasks.into_iter().enumerate().map(|(index, mut task)| {
@@ -248,89 +293,105 @@ fn id_reset(tasks: Vec<Task>) -> Vec<Task> {
     }).collect()
 }
 
-fn get_tasks() -> anyhow::Result<Vec<Task>> {
+pub fn list_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, week_task: bool, book_mark: bool) -> anyhow::Result<()> {
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
         .open(path)?;
     let tasks = collect_tasks(&file)?;
-
-    Ok(tasks)
-}
-
-pub fn list_tasks_by_filter(flexible: bool, expired: bool, date: bool, weekday: bool) -> anyhow::Result<()> {
-    let mut tasks = get_tasks()?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
         return Ok(());
     }
-    match (flexible, expired, date, weekday) {
-        (true, _, _, _) => {
-            tasks.retain(|t| t.date.is_empty() && t.weekday.is_empty());
-            if tasks.is_empty() {
-                println!("{}", "warning: There are no flexible tasks!".bright_yellow());
-            } else {
-                tasks.into_iter().enumerate().for_each(|(index, task)| {
-                    println!("{}: {}", index + 1, task)
-                });
-            }
+    let selected_tasks: Vec<Task> = match (expired, once_task, month_task, week_task, book_mark) {
+        (true, _, _, _, _) => {
+            tasks.into_iter().filter(|task| {
+                match &task.content {
+                    TaskType::OnceTask { expired, .. } => {
+                        expired.to_owned()
+                    },
+                    _ => false
+                }
+            }).collect()
         },
-        (_, true, _, _) => {
-            tasks.retain(|t| t.expired);
-            if tasks.is_empty() {
-                println!("{}", "warning: There are no expired tasks!".bright_yellow());
-            } else {
-                tasks.into_iter().enumerate().for_each(|(index, task)| {
-                    println!("{}: {}", index + 1, task)
-                });
-            }
+        (_, true, _, _, _) => {
+            tasks.into_iter().filter(|task| {
+                match &task.content {
+                    TaskType::OnceTask { .. } => true,
+                    _ => false
+                }
+            }).collect()
         },
-        (_, _, true, _) => {
-            tasks.retain(|t| !t.date.is_empty());
-            if tasks.is_empty() {
-                println!("{}", "warning: There are no tasks with one-time-date!".bright_yellow());
-            } else {
-                tasks.into_iter().enumerate().for_each(|(index, task)| {
-                    println!("{}: {}", index + 1, task)
-                });
-            }
+        (_, _, true, _, _) => {
+            tasks.into_iter().filter(|task| {
+                match &task.content {
+                    TaskType::MonthTask { .. } => true,
+                    _ => false
+                }
+            }).collect()
         },
-        (_, _, _, true) => {
-            tasks.retain(|t| !t.weekday.is_empty());
-            if tasks.is_empty() {
-                println!("{}", "warning: There are no tasks with repeat weekday!".bright_yellow());
-            } else {
-                tasks.into_iter().enumerate().for_each(|(index, task)| {
-                    println!("{}: {}", index + 1, task)
-                })
-            }
+        (_, _, _, true, _) => {
+            tasks.into_iter().filter(|task| {
+                match &task.content {
+                    TaskType::WeekTask { .. } => true,
+                    _ => false
+                }
+            }).collect()
         },
-        _ => {
-            tasks.into_iter().enumerate().for_each(|(index, task)| {
-                println!("{}: {}", index + 1, task)
-            });
-        }
+        (_, _, _, _, true) => {
+            tasks.into_iter().filter(|task| {
+                match &task.content {
+                    TaskType::BookMark { .. } => true,
+                    _ =>false
+                }
+            }).collect()
+        },
+        _ => tasks
+    };
+    if selected_tasks.is_empty() {
+        println!("{}", "warning: There are no tasks with selected type!".bright_yellow());
+    } else {
+        selected_tasks.into_iter().enumerate().for_each(|(index, task)| {
+            println!("{}: {}", index + 1, task)
+        });
     }
 
     Ok(())
 }
 
 pub fn tasks_of_today() -> anyhow::Result<()> {
-    println!("{} {} {} {}.", date::get_greeting().bright_green(), "Today is".bright_green(), date::get_date().bright_green(), date::get_weekday().to_string().bright_green());
-    let mut tasks = get_tasks()?;
+    let path = get_path()?;
+    let file = OpenOptions::new()
+        .read(true)
+        .open(path)?;
+    let tasks = collect_tasks(&file)?;
     if tasks.is_empty() {
         println!("{}", "warning: Task list is empty!".bright_yellow());
-    } else {
-        tasks.retain(|t| date::date_check(t));
-        if !tasks.is_empty() {
-            println!("{}", "Here is today’s todo list, have a nice day!".bright_green());
-            tasks.into_iter().enumerate().for_each(|(index, task)| {
-                println!("{}: {}", index + 1, task)
-            });
-        } else {
-            println!("{}", "Take a break! there are no tasks today!".bright_green());
-        };
+        return Ok(());
     }
+    println!("{} {} {} {}.", date::get_greeting().bright_green(), "Today is".bright_green(), date::get_date().bright_green(), date::get_weekday().to_string().bright_green());
+    let today_tasks: Vec<Task> = tasks.into_iter().filter(|task| {
+        match &task.content {
+            TaskType::OnceTask { date, .. } => {
+                date::date_check(date)
+            },
+            TaskType::WeekTask { weekday, .. } => {
+                date::weekday_check(weekday)
+            },
+            TaskType::MonthTask { day, .. } => {
+                date::day_check(day.to_owned())
+            },
+            _ => false
+        }
+    }).collect();
+    if !today_tasks.is_empty() {
+        println!("{}", "Here is today’s todo list, have a nice day!".bright_green());
+        today_tasks.into_iter().enumerate().for_each(|(index, task)| {
+            println!("{}: {}", index + 1, task)
+        });
+    } else {
+        println!("{}", "Take a break! there are no tasks today!".bright_green());
+    };
     
     Ok(())
 }

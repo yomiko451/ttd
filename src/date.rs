@@ -1,7 +1,6 @@
 use chrono::{Datelike, Local, Timelike, Weekday, NaiveDate};
 use anyhow::anyhow;
 use colored::Colorize;
-use crate::task::Task;
 
 pub fn get_greeting() -> String {
     let hour = Local::now().hour();
@@ -36,35 +35,39 @@ pub fn parse_weekday(weekday: &str) -> anyhow::Result<chrono::Weekday> {
     )
 }
 
-pub fn date_check(task: &Task) -> bool {
-    if !task.date.is_empty() {
-        let date = parse_date(&task.date).unwrap();
-        let today_date = Local::now().date_naive();
-        if date == today_date {
-            return true;
-        }
+pub fn date_check(date: &str) -> bool {
+    let date = parse_date(date).unwrap();
+    let today_date = Local::now().date_naive();
+    if date == today_date {
+        true
+    } else {
+        false
     }
-    if !task.weekday.is_empty() {
-        let weekday = parse_weekday(&task.weekday).unwrap();
-        let today_weekday = get_weekday();
-        if weekday == today_weekday {
-            return true;
-        }
-    }
-
-    false
 }
 
-pub fn expired_check(task: &Task) -> bool {
-    if !task.date.is_empty() {
-        let date = parse_date(&task.date).unwrap();
-        let today_date = Local::now().date_naive();
-        if date < today_date {
-            return true;
-        }
+pub fn weekday_check(weekday: &str) -> bool {
+    let weekday = parse_weekday(weekday).unwrap();
+    let today_weekday = get_weekday();
+    if weekday == today_weekday {
+        true
+    } else {
+        false
     }
-    
-    false
+}
+
+pub fn day_check(day: usize) -> bool {
+    let today = Local::now().format("%d").to_string().parse::<usize>().unwrap();
+    day == today
+}
+
+pub fn expired_check(date: &str) -> bool {
+    let date = parse_date(date).unwrap();
+    let today_date = Local::now().date_naive();
+    if date < today_date {
+        true
+    } else {
+        false
+    }
 }
 
 #[cfg(test)]
