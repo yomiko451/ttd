@@ -22,19 +22,19 @@ pub enum Commands {
         text: Option<String>,
         
         /// set repeat weekday for the task
-        #[arg(short, long = "week_day", group = "add_args")]
+        #[arg(short, long = "week", group = "add_args")]
         weekday: Option<String>,
 
         /// set repeat monthday for the task
-        #[arg(short = 'm', long = "month_day", group = "add_args")]
+        #[arg(short = 'm', long = "month", group = "add_args")]
         day: Option<usize>,
 
         /// set one-time-date for the task
-        #[arg(short='o', long = "once_date", group = "add_args")]
+        #[arg(short='o', long = "once", group = "add_args")]
         date: Option<String>,
 
         /// set bookmark for a book
-        #[arg(short = 'b', long = "book_page", group = "add_args")]
+        #[arg(short = 'b', long = "book", group = "add_args")]
         page: Option<usize>,
 
         /// Add multiple tasks to the journal file.
@@ -53,19 +53,19 @@ pub enum Commands {
         expired: bool,
 
         /// remove all tasks with repeat monthday
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "month", exclusive = true)]
         month_task: bool,
 
         /// remove all bookmarks
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "book", exclusive = true)]
         book_mark: bool,
 
         /// remove all tasks with one-time-date
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "once", exclusive = true)]
         once_task: bool,
 
         /// remove all tasks with repeat weekday
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "week", exclusive = true)]
         week_task: bool,
 
         /// remove all tasks
@@ -81,19 +81,19 @@ pub enum Commands {
         expired: bool,
 
         /// list all tasks with repeat monthday
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "month", exclusive = true)]
         month_task: bool,
 
         /// list all bookmarks
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "book", exclusive = true)]
         book_mark: bool,
 
         /// list all tasks with one-time-date
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "once", exclusive = true)]
         once_task: bool,
 
         /// list all tasks with repeat weekday
-        #[arg(short, long, exclusive = true)]
+        #[arg(short, long = "week", exclusive = true)]
         week_task: bool,
     },
 
@@ -105,11 +105,9 @@ pub enum Commands {
     #[command(visible_aliases = ["u", "ud"])]
     Update{
         /// set the id of the bookmark to be updated
-        #[arg(short, long)]
         id: usize,
 
         /// set the page of the bookmark to be updated
-        #[arg(short = 'p', long)]
         new_page: usize,
     }
 }

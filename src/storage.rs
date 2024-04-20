@@ -73,6 +73,8 @@ pub fn update_bookmark(id: usize, new_page: usize) -> anyhow::Result<()> {
     } else {
         return Err(anyhow!("error: Invalid index, please enter a valid index (e.g. 1, 2, 3, etc.)".bright_red()));
     }
+    file.set_len(0)?;
+    serde_json::to_writer_pretty(file, &tasks)?;
     let new_book_mark = tasks.get(id - 1).unwrap();
     println!("{} {}", "page updated!:".bright_green() , new_book_mark);
     
@@ -122,8 +124,8 @@ pub fn add_task(mut task: Task) -> anyhow::Result<()> {
 
 pub fn handle_user_input() -> anyhow::Result<()> {
     println!("{}", "Enable multi-line input mode".bright_green());
-    println!("{}", "Please enter tasks to be added in the format: Task content + space + Weekday/year-month-day. ".bright_green());
-    println!("{}", "For example: 'Do something awesome' Mon, 'Do something even more awesome' 20240402".bright_green());
+    println!("{}", "Please enter tasks to be added in the format: Task content + task type + Weekday/monthday/date/page. ".bright_green());
+    println!("{}", "For example: 'Do something awesome' -w Mon, 'Do something even more awesome' -o 20240402".bright_green());
     println!("{}", "Enter on an empty line if you want to exit multi-line input mode.".bright_green());
     loop {
         print!("> ");
@@ -164,7 +166,7 @@ pub fn handle_user_input() -> anyhow::Result<()> {
 fn parse_input(task_content: (&str, &str), task_type: &str) -> anyhow::Result<Task> {
     match task_type {
         "-w" => Ok(parse_task(task_content.0.to_owned(), Some(task_content.1.to_owned()), None, None, None)?),
-        "-d" => Ok(parse_task(task_content.0.to_owned(), None, Some(task_content.1.parse::<usize>()?), None, None)?),
+        "-m" => Ok(parse_task(task_content.0.to_owned(), None, Some(task_content.1.parse::<usize>()?), None, None)?),
         "-o" => Ok(parse_task(task_content.0.to_owned(), None, None, Some(task_content.1.to_owned()), None)?),
         "-b" => Ok(parse_task(task_content.0.to_owned(), None, None, None, Some(task_content.1.parse::<usize>()?))?),
         _ => return Err(anyhow!("{}", "error: Invalid task type!".bright_red()))
