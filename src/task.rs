@@ -15,17 +15,19 @@ pub enum TaskType {
     WeekTask {
         text: String,
         weekday: String,
+        ongoing: bool,
     },
 
     MonthTask {
         text: String,
         day: usize,
+        ongoing: bool
     },
 
     OnceTask {
         text: String,
         date: String,
-        expired: bool
+        status: OnceDateStatus
     },
 
     BookMark {
@@ -34,6 +36,12 @@ pub enum TaskType {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum OnceDateStatus {
+    Expired,
+    Upcoming,
+    Ongoing
+}
 
 impl Task {
     pub fn build(content: TaskType) -> Task {
@@ -46,22 +54,24 @@ impl Task {
 
     fn format_info(&self) -> String {
         match &self.content {
-            TaskType::WeekTask { text, weekday } => {
-                format!("[#{}]: {} - {} repeat every week - created at {}", self.id, text.bright_blue(), weekday.bright_green(), self.created_at)
+            TaskType::WeekTask { text, weekday, ongoing } => {
+                let flag = if *ongoing { " Ongoing".bright_green() } else { " Upcoming".to_string().bright_yellow() };
+                format!("[#{}]: {} - {}{} - repeat every week - created at {}", self.id, text.bright_blue(), weekday.bright_green(), flag, self.created_at)
             },
-            TaskType::MonthTask { text, day } => {
-                format!("[#{}]: {} - {} repeat every month - created at {}", self.id, text.bright_blue(), day.to_string().bright_green(), self.created_at)
+            TaskType::MonthTask { text, day, ongoing } => {
+                let flag = if *ongoing { " Ongoing".bright_green() } else { " Upcoming".to_string().bright_yellow() };
+                format!("[#{}]: {} - {}{} - repeat every month - created at {}", self.id, text.bright_blue(), day.to_string().bright_green(), flag, self.created_at)
             },
-            TaskType::OnceTask { text, date, expired } => {
-                let flag = if expired.to_owned() { 
-                    " expired".bright_yellow() 
-                } else { 
-                    " upcoming".bright_green()
+            TaskType::OnceTask { text, date, status } => {
+                let flag = match status {
+                    OnceDateStatus::Expired => " Expired".bright_red(),
+                    OnceDateStatus::Upcoming => " Upcoming".bright_yellow(),
+                    OnceDateStatus::Ongoing => " Ongoing".bright_green()
                 };
-                format!("[#{}]: {} - {}{} - created at {}", self.id, text.bright_blue(), date.bright_green(), flag, self.created_at)
+                format!("[#{}]: {} - {}{} - once-time reminder - created at {}", self.id, text.bright_blue(), date.bright_green(), flag, self.created_at)
             },
             TaskType::BookMark { text, page } => {
-                format!("[#{}]: {} - page {} - created at {}", self.id, text.bright_blue(), page.to_string().bright_green(), self.created_at)
+                format!("[#{}]: {} - {} - bookmark - created at {}", self.id, text.bright_blue(), format!("Page: {}", page).bright_green(), self.created_at)
             }
         }
     }

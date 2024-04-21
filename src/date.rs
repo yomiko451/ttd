@@ -1,6 +1,7 @@
 use chrono::{Datelike, Local, Timelike, Weekday, NaiveDate};
 use anyhow::anyhow;
 use colored::Colorize;
+use crate::task::OnceDateStatus;
 
 pub fn get_greeting() -> String {
     let hour = Local::now().hour();
@@ -35,13 +36,15 @@ pub fn parse_weekday(weekday: &str) -> anyhow::Result<chrono::Weekday> {
     )
 }
 
-pub fn date_check(date: &str) -> bool {
+pub fn date_check(date: &str) -> OnceDateStatus {
     let date = parse_date(date).unwrap();
     let today_date = Local::now().date_naive();
     if date == today_date {
-        true
+        OnceDateStatus::Ongoing
+    } else if date < today_date {
+        OnceDateStatus::Expired
     } else {
-        false
+        OnceDateStatus::Upcoming
     }
 }
 
@@ -58,16 +61,6 @@ pub fn weekday_check(weekday: &str) -> bool {
 pub fn day_check(day: usize) -> bool {
     let today = Local::now().format("%d").to_string().parse::<usize>().unwrap();
     day == today
-}
-
-pub fn expired_check(date: &str) -> bool {
-    let date = parse_date(date).unwrap();
-    let today_date = Local::now().date_naive();
-    if date < today_date {
-        true
-    } else {
-        false
-    }
 }
 
 #[cfg(test)]

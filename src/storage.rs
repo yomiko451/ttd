@@ -4,7 +4,7 @@ use std::{
 use anyhow::anyhow;
 use crate::{
     date,
-    task::{Task, TaskType}
+    task::{Task, TaskType, OnceDateStatus}
 };
 use colored::Colorize;
 
@@ -25,8 +25,17 @@ pub fn init() -> anyhow::Result<()> {
     let mut tasks = collect_tasks(&file)?;
     if !tasks.is_empty() {
         tasks.iter_mut().for_each(|t| {
-            if let TaskType::OnceTask{ text: _, date, ref mut expired } = &mut t.content {
-                *expired = date::expired_check(&date);
+            match &mut t.content {
+                TaskType::OnceTask{ text: _, date, ref mut status } => {
+                    *status = date::date_check(&date);
+                },
+                TaskType::WeekTask { text: _, weekday, ref mut ongoing } => {
+                    *ongoing = date::weekday_check(weekday);
+                },
+                TaskType::MonthTask { text: _, day, ref mut ongoing } => {
+                    *ongoing = date::day_check(*day);
+                },
+                _ => {}
             }
         })
     }
@@ -85,21 +94,23 @@ pub fn parse_task(text: String, weekday: Option<String>, day: Option<usize>, dat
     match (weekday, day, date, page) {
         (Some(w), _, _, _) => {
             let w = date::parse_weekday(&w)?.to_string();
-            Ok(Task::build(TaskType::WeekTask { text, weekday: w }))
+            let ongoing = date::weekday_check(&w);
+            Ok(Task::build(TaskType::WeekTask { text, weekday: w, ongoing }))
         },
         (_, Some(d), _, _) => {
             if d <= 0 || d > 31 {
                 return Err(anyhow!("error: Invalid day, please enter a valid day (e.g. 1, 2, 3, etc.)".bright_red()));
             }
-            Ok(Task::build(TaskType::MonthTask { text, day: d }))
+            let ongoing = date::day_check(d);
+            Ok(Task::build(TaskType::MonthTask { text, day: d, ongoing }))
         },
         (_, _, Some(d), _) => {
             let d = date::parse_date(&d)?.format("%Y%m%d").to_string();
-            let expired = date::expired_check(&d);
-            if expired {
+            let status = date::date_check(&d);
+            if let OnceDateStatus::Expired = status {
                 println!("{}", "warning: The task has expired.".bright_yellow());
             }
-            Ok(Task::build(TaskType::OnceTask { text, date: d, expired }))
+            Ok(Task::build(TaskType::OnceTask { text, date: d, status }))
         },
         (_, _, _, Some(p)) => Ok(Task::build(TaskType::BookMark { text, page: p })),
         _ => return Err(anyhow!("error: Invalid task type, please enter a valid task type (e.g. WeekTask, MonthTask, OnceTask, BookMark)".bright_red()))
@@ -234,8 +245,8 @@ pub fn remove_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, 
         (true, _, _, _, _ ) => {
             tasks.into_iter().partition(|task| {
                 match &task.content {
-                    TaskType::OnceTask { expired, .. } => {
-                        !expired.to_owned()
+                    TaskType::OnceTask { status: OnceDateStatus::Expired, .. } => {
+                        false
                     },
                     _ => true
                 }
@@ -309,8 +320,8 @@ pub fn list_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, we
         (true, _, _, _, _) => {
             tasks.into_iter().filter(|task| {
                 match &task.content {
-                    TaskType::OnceTask { expired, .. } => {
-                        expired.to_owned()
+                    TaskType::OnceTask { status: OnceDateStatus::Expired, .. } => {
+                        true
                     },
                     _ => false
                 }
@@ -374,15 +385,9 @@ pub fn tasks_of_today() -> anyhow::Result<()> {
     println!("{} {} {} {}.", date::get_greeting().bright_green(), "Today is".bright_green(), date::get_date().bright_green(), date::get_weekday().to_string().bright_green());
     let today_tasks: Vec<Task> = tasks.into_iter().filter(|task| {
         match &task.content {
-            TaskType::OnceTask { date, .. } => {
-                date::date_check(date)
-            },
-            TaskType::WeekTask { weekday, .. } => {
-                date::weekday_check(weekday)
-            },
-            TaskType::MonthTask { day, .. } => {
-                date::day_check(day.to_owned())
-            },
+            TaskType::OnceTask { status: OnceDateStatus::Ongoing, .. } => true,
+            TaskType::WeekTask { ongoing: true, .. } => true,
+            TaskType::MonthTask { ongoing: true, .. } => true,
             _ => false
         }
     }).collect();
