@@ -34,8 +34,8 @@ pub enum Commands {
         date: Option<String>,
 
         /// set bookmark for a book
-        #[arg(short = 'b', long = "book", group = "add_args")]
-        page: Option<usize>,
+        #[arg(short, long, group = "add_args")]
+        progress: Option<String>,
 
         /// Add multiple tasks to the journal file.
         #[arg(visible_alias = "mul", long, conflicts_with = "text", group = "add_args")]
@@ -57,8 +57,8 @@ pub enum Commands {
         month_task: bool,
 
         /// remove all bookmarks
-        #[arg(short, long = "book", exclusive = true)]
-        book_mark: bool,
+        #[arg(short, long = "progress", exclusive = true)]
+        progress_task: bool,
 
         /// remove all tasks with one-time-date
         #[arg(short, long = "once", exclusive = true)]
@@ -85,8 +85,8 @@ pub enum Commands {
         month_task: bool,
 
         /// list all bookmarks
-        #[arg(short, long = "book", exclusive = true)]
-        book_mark: bool,
+        #[arg(short, long = "progress", exclusive = true)]
+        progress_task: bool,
 
         /// list all tasks with one-time-date
         #[arg(short, long = "once", exclusive = true)]
@@ -108,6 +108,6 @@ pub enum Commands {
         id: usize,
 
         /// set the page of the bookmark to be updated
-        new_page: usize,
+        new_progress: String,
     }
 }

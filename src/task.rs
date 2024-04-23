@@ -30,9 +30,9 @@ pub enum TaskType {
         status: OnceDateStatus
     },
 
-    BookMark {
+    ProgressTask {
         text: String,
-        page: usize
+        progress: String
     }
 }
 
@@ -70,8 +70,8 @@ impl Task {
                 };
                 format!("[#{}]: {} - {}{} - once-time reminder - created at {}", self.id, text.bright_blue(), date.bright_green(), flag, self.created_at)
             },
-            TaskType::BookMark { text, page } => {
-                format!("[#{}]: {} - {} - bookmark - created at {}", self.id, text.bright_blue(), format!("Page: {}", page).bright_green(), self.created_at)
+            TaskType::ProgressTask { text, progress } => {
+                format!("[#{}]: {} - {} - progress - created at {}", self.id, text.bright_blue(), progress.bright_green(), self.created_at)
             }
         }
     }

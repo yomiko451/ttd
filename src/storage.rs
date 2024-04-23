@@ -66,7 +66,7 @@ fn collect_tasks(mut file: &File) -> anyhow::Result<Vec<Task>> {
     Ok(tasks)
 }
 
-pub fn update_bookmark(id: usize, new_page: usize) -> anyhow::Result<()> {
+pub fn update_bookmark(id: usize, new_progress: String) -> anyhow::Result<()> {
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
@@ -74,8 +74,8 @@ pub fn update_bookmark(id: usize, new_page: usize) -> anyhow::Result<()> {
         .open(path)?;
     let mut tasks = collect_tasks(&file)?;
     if let Some(task) = tasks.get_mut(id - 1) {
-        if let TaskType::BookMark { text: _, page: ref mut p } = &mut task.content {
-            *p = new_page;
+        if let TaskType::ProgressTask { text: _, progress: ref mut p } = &mut task.content {
+            *p = new_progress;
         } else {
             return Err(anyhow!("error: The task is not a bookmark, please enter a valid index (e.g. 1, 2, 3, etc.)".bright_red()));
         }
@@ -90,8 +90,8 @@ pub fn update_bookmark(id: usize, new_page: usize) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn parse_task(text: String, weekday: Option<String>, day: Option<usize>, date: Option<String>, page: Option<usize>) -> anyhow::Result<Task> {
-    match (weekday, day, date, page) {
+pub fn parse_task(text: String, weekday: Option<String>, day: Option<usize>, date: Option<String>, progress: Option<String>) -> anyhow::Result<Task> {
+    match (weekday, day, date, progress) {
         (Some(w), _, _, _) => {
             let w = date::parse_weekday(&w)?.to_string();
             let ongoing = date::weekday_check(&w);
@@ -112,7 +112,7 @@ pub fn parse_task(text: String, weekday: Option<String>, day: Option<usize>, dat
             }
             Ok(Task::build(TaskType::OnceTask { text, date: d, status }))
         },
-        (_, _, _, Some(p)) => Ok(Task::build(TaskType::BookMark { text, page: p })),
+        (_, _, _, Some(p)) => Ok(Task::build(TaskType::ProgressTask { text, progress: p })),
         _ => return Err(anyhow!("error: Invalid task type, please enter a valid task type (e.g. WeekTask, MonthTask, OnceTask, BookMark)".bright_red()))
     }
 }
@@ -179,7 +179,7 @@ fn parse_input(task_content: (&str, &str), task_type: &str) -> anyhow::Result<Ta
         "-w" => Ok(parse_task(task_content.0.to_owned(), Some(task_content.1.to_owned()), None, None, None)?),
         "-m" => Ok(parse_task(task_content.0.to_owned(), None, Some(task_content.1.parse::<usize>()?), None, None)?),
         "-o" => Ok(parse_task(task_content.0.to_owned(), None, None, Some(task_content.1.to_owned()), None)?),
-        "-b" => Ok(parse_task(task_content.0.to_owned(), None, None, None, Some(task_content.1.parse::<usize>()?))?),
+        "-p" => Ok(parse_task(task_content.0.to_owned(), None, None, None, Some(task_content.1.to_owned()))?),
         _ => return Err(anyhow!("{}", "error: Invalid task type!".bright_red()))
     }
 }
@@ -229,7 +229,7 @@ pub fn clear_tasks() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn remove_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, week_task: bool, book_mark: bool) -> anyhow::Result<()> {
+pub fn remove_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, week_task: bool, progress_task: bool) -> anyhow::Result<()> {
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
@@ -241,7 +241,7 @@ pub fn remove_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, 
         return Ok(());
     }
     let origin_len = tasks.len();
-    let (retained_tasks, removed_tasks): (Vec<Task>, Vec<Task>) = match (expired, once_task, month_task, week_task, book_mark) {
+    let (retained_tasks, removed_tasks): (Vec<Task>, Vec<Task>) = match (expired, once_task, month_task, week_task, progress_task) {
         (true, _, _, _, _ ) => {
             tasks.into_iter().partition(|task| {
                 match &task.content {
@@ -279,7 +279,7 @@ pub fn remove_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, 
         (_, _, _, _, true) => {
             tasks.into_iter().partition(|task| {
                 match &task.content {
-                    TaskType::BookMark { .. } => false,
+                    TaskType::ProgressTask { .. } => false,
                     _ => true
                 }
             })
@@ -306,7 +306,7 @@ fn id_reset(tasks: Vec<Task>) -> Vec<Task> {
     }).collect()
 }
 
-pub fn list_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, week_task: bool, book_mark: bool) -> anyhow::Result<()> {
+pub fn list_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, week_task: bool, progress_task: bool) -> anyhow::Result<()> {
     let path = get_path()?;
     let file = OpenOptions::new()
         .read(true)
@@ -316,7 +316,7 @@ pub fn list_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, we
         println!("{}", "warning: Task list is empty!".bright_yellow());
         return Ok(());
     }
-    let selected_tasks: Vec<Task> = match (expired, once_task, month_task, week_task, book_mark) {
+    let selected_tasks: Vec<Task> = match (expired, once_task, month_task, week_task, progress_task) {
         (true, _, _, _, _) => {
             tasks.into_iter().filter(|task| {
                 match &task.content {
@@ -354,7 +354,7 @@ pub fn list_tasks_by_filter(expired: bool, once_task: bool, month_task: bool, we
         (_, _, _, _, true) => {
             tasks.into_iter().filter(|task| {
                 match &task.content {
-                    TaskType::BookMark { .. } => true,
+                    TaskType::ProgressTask { .. } => true,
                     _ =>false
                 }
             }).collect()

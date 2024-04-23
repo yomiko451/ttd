@@ -23,7 +23,7 @@ fn main() {
             weekday,
             day,
             date,
-            page,
+            progress,
             multiple,
         }) => {
             if multiple {
@@ -32,7 +32,7 @@ fn main() {
                     Err(e) => println!("{}", e),
                 }
             } else {
-                match storage::parse_task(text.unwrap(), weekday, day, date, page) {
+                match storage::parse_task(text.unwrap(), weekday, day, date, progress) {
                     Ok(task) => {
                         if let Err(e) = storage::add_task(task) {
                             println!("{}", e);
@@ -49,9 +49,9 @@ fn main() {
             once_task,
             month_task,
             week_task,
-            book_mark
+            progress_task
         }) => {
-            match (id, all, expired, once_task, month_task, week_task, book_mark) {
+            match (id, all, expired, once_task, month_task, week_task, progress_task) {
                 (id, false, false, false, false, false, false) => {
                     match storage::remove_task_by_id(id) {
                         Ok(_) => {}
@@ -65,15 +65,15 @@ fn main() {
                     }
                 },
                 _ => {
-                    match storage::remove_tasks_by_filter(expired, once_task, month_task, week_task, book_mark) {
+                    match storage::remove_tasks_by_filter(expired, once_task, month_task, week_task, progress_task) {
                         Ok(_) => {},
                         Err(e) => println!("{}", e),
                     }
                 }
             }
         },
-        Some(cli::Commands::List{ expired, once_task, month_task, week_task, book_mark }) => {
-            match storage::list_tasks_by_filter(expired, once_task, month_task, week_task, book_mark) {
+        Some(cli::Commands::List{ expired, once_task, month_task, week_task, progress_task }) => {
+            match storage::list_tasks_by_filter(expired, once_task, month_task, week_task, progress_task) {
                 Ok(_) => {},
                 Err(e) => println!("{}", e),
             }
@@ -83,8 +83,8 @@ fn main() {
                 println!("{}", e);
             }
         },
-        Some(cli::Commands::Update{ id, new_page }) => {
-            match storage::update_bookmark(id, new_page) {
+        Some(cli::Commands::Update{ id, new_progress }) => {
+            match storage::update_bookmark(id, new_progress) {
                 Ok(_) => {},
                 Err(e) => println!("{}", e),
             }
