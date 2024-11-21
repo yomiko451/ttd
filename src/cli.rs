@@ -16,11 +16,11 @@ pub enum Commands {
     /// Add one or multiple tasks to the journal file, If no arguments provided, the task will be configured as a long-term task.
     #[command(visible_aliases = ["a", "ad"])]
     #[group(requires = "add_args")]
-    Add{
+    Add {
         /// set content for the task
         #[arg(required_unless_present = "multiple")]
         text: Option<String>,
-        
+
         /// set repeat weekday for the task
         #[arg(short, long = "week", group = "add_args")]
         weekday: Option<String>,
@@ -30,7 +30,7 @@ pub enum Commands {
         day: Option<usize>,
 
         /// set one-time-date for the task
-        #[arg(short='o', long = "once", group = "add_args")]
+        #[arg(short = 'o', long = "once", group = "add_args")]
         date: Option<String>,
 
         /// set bookmark for a book
@@ -38,13 +38,18 @@ pub enum Commands {
         progress: Option<String>,
 
         /// Add multiple tasks to the journal file.
-        #[arg(visible_alias = "mul", long, conflicts_with = "text", group = "add_args")]
-        multiple: bool
-    }, 
+        #[arg(
+            visible_alias = "mul",
+            long,
+            conflicts_with = "text",
+            group = "add_args"
+        )]
+        multiple: bool,
+    },
 
     /// Remove one or multiple tasks from the journal file, If no arguments provided, the last task will be removed.
     #[command(visible_aliases = ["r", "rm"])]
-    Remove{
+    Remove {
         /// remove a task by id
         id: Option<usize>,
 
@@ -70,12 +75,12 @@ pub enum Commands {
 
         /// remove all tasks
         #[arg(short, long, exclusive = true)]
-        all: bool
+        all: bool,
     },
 
     /// List all tasks in the journal file.
     #[command(visible_aliases = ["l", "ls"])]
-    List{
+    List {
         /// list all expired tasks
         #[arg(short, long)]
         expired: bool,
@@ -103,11 +108,11 @@ pub enum Commands {
 
     /// update page of the selected bookmark
     #[command(visible_aliases = ["u", "ud"])]
-    Update{
+    Update {
         /// set the id of the bookmark to be updated
         id: usize,
 
         /// set the page of the bookmark to be updated
         new_progress: String,
-    }
+    },
 }
